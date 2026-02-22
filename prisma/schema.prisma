@@ -1,0 +1,144 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model cooking_logs {
+  log_id      Int                 @id @default(autoincrement())
+  user_id     Int?
+  recipe_id   Int?
+  status      cooking_logs_status
+  lesson_note String?             @db.Text
+  companion   String?             @db.VarChar(50)
+  cooked_at   DateTime?           @default(now()) @db.Timestamp(0)
+  users       users?              @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "cooking_logs_ibfk_1")
+  recipes     recipes?            @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "cooking_logs_ibfk_2")
+
+  @@index([recipe_id], map: "recipe_id")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model fridge_items {
+  item_id            Int                 @id @default(autoincrement())
+  user_id            Int?
+  master_id          Int?
+  custom_name        String?             @db.VarChar(50)
+  quantity           Decimal?            @db.Decimal(10, 2)
+  unit               String?             @db.VarChar(20)
+  expiry_date        DateTime?           @db.Date
+  created_at         DateTime?           @default(now()) @db.Timestamp(0)
+  users              users?              @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "fridge_items_ibfk_1")
+  ingredients_master ingredients_master? @relation(fields: [master_id], references: [master_id], onUpdate: NoAction, map: "fridge_items_ibfk_2")
+
+  @@index([master_id], map: "master_id")
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model ingredients_master {
+  master_id          Int                  @id @default(autoincrement())
+  name               String               @unique(map: "name") @db.VarChar(50)
+  category           String?              @db.VarChar(30)
+  icon_url           String?              @db.VarChar(255)
+  default_unit       String?              @db.VarChar(20)
+  base_shelf_life    Int?                 @default(7)
+  fridge_items       fridge_items[]
+  recipe_ingredients recipe_ingredients[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model recipe_ingredients {
+  ri_id              Int                 @id @default(autoincrement())
+  recipe_id          Int?
+  master_id          Int?
+  name               String              @db.VarChar(50)
+  amount             Decimal?            @db.Decimal(10, 2)
+  unit               String?             @db.VarChar(20)
+  recipes            recipes?            @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_ingredients_ibfk_1")
+  ingredients_master ingredients_master? @relation(fields: [master_id], references: [master_id], onUpdate: NoAction, map: "recipe_ingredients_ibfk_2")
+
+  @@index([master_id], map: "master_id")
+  @@index([recipe_id], map: "recipe_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model recipe_steps {
+  step_id        Int      @id @default(autoincrement())
+  recipe_id      Int?
+  step_order     Int
+  instruction    String   @db.Text
+  step_image_url String?  @db.VarChar(255)
+  timer_seconds  Int?     @default(0)
+  recipes        recipes? @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_steps_ibfk_1")
+
+  @@index([recipe_id], map: "recipe_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model recipes {
+  recipe_id          Int                  @id @default(autoincrement())
+  user_id            Int?
+  title              String               @db.VarChar(255)
+  source_url         String?              @db.Text
+  thumbnail_url      String?              @db.Text
+  difficulty         recipes_difficulty?
+  servings           Int?                 @default(1)
+  created_at         DateTime?            @default(now()) @db.Timestamp(0)
+  cooking_logs       cooking_logs[]
+  recipe_ingredients recipe_ingredients[]
+  recipe_steps       recipe_steps[]
+  users              users?               @relation(fields: [user_id], references: [user_id], onUpdate: NoAction, map: "recipes_ibfk_1")
+
+  @@index([user_id], map: "user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model user_settings {
+  setting_id          Int      @id @default(autoincrement())
+  user_id             Int?     @unique(map: "user_id")
+  alert_timer         Boolean? @default(true)
+  alert_expiry        Boolean? @default(true)
+  auto_export_enabled Boolean? @default(false)
+  external_link       String?  @db.VarChar(255)
+  users               users?   @relation(fields: [user_id], references: [user_id], onDelete: Cascade, onUpdate: NoAction, map: "user_settings_ibfk_1")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model users {
+  user_id         Int                   @id @default(autoincrement())
+  nickname        String                @db.VarChar(50)
+  email           String?               @db.VarChar(100)
+  social_provider users_social_provider
+  social_id       String                @unique(map: "social_id") @db.VarChar(255)
+  profile_image    String?               @db.Text
+  created_at       DateTime?             @default(now()) @db.Timestamp(0)
+  terms_agreements Boolean               @default(true)
+  terms_agreed_at  DateTime?             @default(now()) @db.Timestamp(0)
+  cooking_logs     cooking_logs[]
+  fridge_items    fridge_items[]
+  recipes         recipes[]
+  user_settings   user_settings?
+}
+
+enum users_social_provider {
+  google
+  kakao
+  naver
+}
+
+enum cooking_logs_status {
+  SUCCESS @map("성공")
+  REGRET @map("아쉬움")
+  FAIL @map("실패")
+}
+
+enum recipes_difficulty {
+  Easy
+  Medium
+  Hard
+}
