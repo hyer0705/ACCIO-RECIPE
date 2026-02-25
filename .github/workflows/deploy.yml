@@ -1,0 +1,42 @@
+name: Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Deploy to EC2 server
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USERNAME }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          port: ${{ secrets.EC2_PORT }}
+          script: |
+            # NVM 환경 변수 로드 (node 명령어를 찾지 못하는 오류 방지)
+            export NVM_DIR="$HOME/.nvm"
+            [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+            
+            # 프로젝트 폴더로 이동
+            cd ${{ secrets.TARGET_DIR }}
+            
+            # 현재 트리거된 브랜치의 최신 코드를 가져오기
+            git pull origin ${{ github.ref_name }}
+            
+            # 패키지 설치
+            npm install
+            
+            # Prisma 클라이언트 생성
+            npx prisma generate
+            
+            # 프로젝트 빌드
+            npm run build
+            
+            # PM2 앱 재시작 (PM2에 등록된 프로세스 이름이 다를 경우 수정 필요)
+            pm2 restart all
