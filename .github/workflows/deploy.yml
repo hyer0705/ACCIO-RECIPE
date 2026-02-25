@@ -20,18 +20,20 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20' # 프로젝트의 노드 버전에 맞게 수정 가능
+          node-version: '24'
 
       - name: Install Dependencies
-        run: npm ci # npm install 보다 빠르고 안전하게 패키지를 설치합니다.
+        run: npm ci
+        working-directory: ./
 
       - name: Run Lint
         run: npm run lint
+        working-directory: ./
 
   # 2. CD 단계: EC2 서버 배포 (단, lint 작업이 성공적으로 끝났을 때만 실행)
   deploy:
     name: Deploy to EC2
-    needs: lint # 중요: lint job이 성공해야만 deploy job이 시작됩니다.
+    needs: lint
     runs-on: ubuntu-latest
 
     steps:
