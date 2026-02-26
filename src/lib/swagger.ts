@@ -1,26 +1,32 @@
-import { createSwaggerSpec } from 'next-swagger-doc';
+import swaggerJSDoc from 'swagger-jsdoc';
 
-export const getApiDocs = async () => {
-  const spec = createSwaggerSpec({
-    apiFolder: 'src/app/api',
-    definition: {
-      openapi: '3.0.0',
-      info: {
-        title: 'ACCIO-RECIPE API',
-        description: 'API Documentation for ACCIO-RECIPE App',
-        version: '1.0.0',
-      },
-      components: {
-        securitySchemes: {
-          BearerAuth: {
-            type: 'http',
-            scheme: 'bearer',
-            bearerFormat: 'JWT',
-          },
+const swaggerOptions = {
+  swaggerDefinition: {
+    openapi: '3.0.0',
+    info: {
+      title: 'Accio Recipe API',
+      version: '1.0.0',
+      description: 'API documentation for Accio Recipe application.',
+    },
+    components: {
+      securitySchemes: {
+        cookieAuth: {
+          type: 'apiKey',
+          in: 'cookie',
+          name: 'next-auth.session-token', // For next-auth
+          description: 'NextAuth Session Cookie',
         },
       },
-      security: [],
     },
-  });
-  return spec;
+    security: [
+      {
+        cookieAuth: [],
+      },
+    ],
+  },
+  apis: ['src/app/api/**/*.ts'], // Path to the API routes
+};
+
+export const getApiDocs = async () => {
+  return swaggerJSDoc(swaggerOptions);
 };
