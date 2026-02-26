@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint .",
     "prepare": "husky",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "test": "vitest run"
   },
   "lint-staged": {
     "*.{js,jsx,ts,tsx}": [
@@ -40,14 +41,19 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/swagger-ui-react": "^5.18.0",
+    "@vitejs/plugin-react": "^5.1.4",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
+    "jsdom": "^28.1.0",
     "lint-staged": "^16.2.7",
+    "node-mocks-http": "^1.17.2",
     "prettier": "^3.8.1",
     "prisma": "^7.4.1",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "vitest": "^4.0.18",
+    "vitest-mock-extended": "^3.1.0"
   }
 }
