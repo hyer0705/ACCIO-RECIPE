@@ -73,6 +73,42 @@ import prisma from '@/lib/prisma';
  *         description: 레시피를 찾을 수 없음
  *       500:
  *         description: 서버 내부 오류
+ *   delete:
+ *     summary: 레시피 삭제
+ *     description: |
+ *       레시피를 삭제합니다. 작성자 본인만 삭제할 수 있습니다.
+ *       - DB Cascade로 `recipe_ingredients`, `recipe_steps`, `cooking_logs`가 함께 삭제됩니다.
+ *     tags: [Recipes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: recipe_id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: 레시피 삭제 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 message:
+ *                   type: string
+ *       400:
+ *         description: 유효하지 않은 recipe_id
+ *       401:
+ *         description: 인증 실패
+ *       403:
+ *         description: 삭제 권한 없음 (타인의 레시피)
+ *       404:
+ *         description: 레시피를 찾을 수 없음
+ *       500:
+ *         description: 서버 내부 오류
  */
 
 interface RouteContext {
@@ -182,6 +218,62 @@ export async function GET(req: Request, context: RouteContext) {
     });
   } catch (error: unknown) {
     console.error('GET /api/recipes/[recipe_id] Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: '서버 에러가 발생했습니다.',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+export async function DELETE(_req: Request, context: RouteContext) {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !('id' in session.user)) {
+      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
+    }
+
+    const userId = parseInt(session.user.id as string, 10);
+    const { recipe_id: recipeIdParam } = await context.params;
+    const recipeId = parseInt(recipeIdParam, 10);
+
+    if (isNaN(recipeId) || recipeId <= 0) {
+      return NextResponse.json(
+        { success: false, message: '유효하지 않은 recipe_id입니다.' },
+        { status: 400 },
+      );
+    }
+
+    const recipe = await prisma.recipes.findUnique({
+      where: { recipe_id: recipeId },
+      select: { recipe_id: true, user_id: true },
+    });
+
+    if (!recipe) {
+      return NextResponse.json(
+        { success: false, message: '존재하지 않는 레시피입니다.' },
+        { status: 404 },
+      );
+    }
+
+    if (recipe.user_id !== userId) {
+      return NextResponse.json(
+        { success: false, message: '삭제 권한이 없습니다.' },
+        { status: 403 },
+      );
+    }
+
+    await prisma.recipes.delete({ where: { recipe_id: recipeId } });
+
+    return NextResponse.json(
+      { success: true, message: '레시피가 삭제되었습니다.' },
+      { status: 200 },
+    );
+  } catch (error: unknown) {
+    console.error('DELETE /api/recipes/[recipe_id] Error:', error);
     return NextResponse.json(
       {
         success: false,

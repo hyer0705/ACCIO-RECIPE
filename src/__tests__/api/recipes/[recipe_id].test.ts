@@ -1,6 +1,9 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { GET as getRecipes } from '@/app/api/recipes/route';
-import { GET as getRecipeDetail } from '@/app/api/recipes/[recipe_id]/route';
+import {
+  GET as getRecipeDetail,
+  DELETE as deleteRecipe,
+} from '@/app/api/recipes/[recipe_id]/route';
 import { GET as getRecipeSteps } from '@/app/api/recipes/[recipe_id]/steps/route';
 import { GET as getRecipeLogs } from '@/app/api/recipes/[recipe_id]/logs/route';
 
@@ -20,12 +23,14 @@ const {
   mockRecipesFindUnique,
   mockStepsFindMany,
   mockLogsFindManyForRecipe,
+  mockRecipesDelete,
 } = vi.hoisted(() => ({
   mockRecipesFindMany: vi.fn(),
   mockLogsFindMany: vi.fn(),
   mockRecipesFindUnique: vi.fn(),
   mockStepsFindMany: vi.fn(),
   mockLogsFindManyForRecipe: vi.fn(),
+  mockRecipesDelete: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -33,6 +38,7 @@ vi.mock('@/lib/prisma', () => ({
     recipes: {
       findMany: mockRecipesFindMany,
       findUnique: mockRecipesFindUnique,
+      delete: mockRecipesDelete,
     },
     cooking_logs: {
       findMany: mockLogsFindMany,
@@ -226,5 +232,54 @@ describe('GET /api/recipes/[recipe_id]/logs', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data[0].status).toBe('SUCCESS');
+  });
+});
+
+// ─────────────────────────────────────────────
+// DELETE /api/recipes/[recipe_id]
+// ─────────────────────────────────────────────
+describe('DELETE /api/recipes/[recipe_id]', () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  const makeReq = () => new Request('http://localhost/api/recipes/1', { method: 'DELETE' });
+
+  test('세션 없으면 401', async () => {
+    mockGetServerSession.mockResolvedValueOnce(null);
+    const res = await deleteRecipe(makeReq(), mockParams('1'));
+    expect(res.status).toBe(401);
+  });
+
+  test('유효하지 않은 recipe_id이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await deleteRecipe(makeReq(), mockParams('abc'));
+    expect(res.status).toBe(400);
+  });
+
+  test('존재하지 않는 레시피이면 404', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockRecipesFindUnique.mockResolvedValueOnce(null);
+    const res = await deleteRecipe(makeReq(), mockParams('99'));
+    expect(res.status).toBe(404);
+  });
+
+  test('타인의 레시피 삭제 시도 시 403', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION); // user_id = 1
+    mockRecipesFindUnique.mockResolvedValueOnce({ recipe_id: 1, user_id: 999 }); // 다른 유저 소유
+    const res = await deleteRecipe(makeReq(), mockParams('1'));
+    expect(res.status).toBe(403);
+  });
+
+  test('본인 레시피 삭제 성공 시 200', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION); // user_id = 1
+    mockRecipesFindUnique.mockResolvedValueOnce({ recipe_id: 1, user_id: 1 }); // 본인 소유
+    mockRecipesDelete.mockResolvedValueOnce({ recipe_id: 1 });
+
+    const res = await deleteRecipe(makeReq(), mockParams('1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(body.success).toBe(true);
+    expect(body.message).toBe('레시피가 삭제되었습니다.');
+    expect(mockRecipesDelete).toHaveBeenCalledWith({ where: { recipe_id: 1 } });
   });
 });
