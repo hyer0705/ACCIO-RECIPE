@@ -6,6 +6,122 @@ import prisma from '@/lib/prisma';
 /**
  * @swagger
  * /api/fridge:
+ *   get:
+ *     summary: 내 냉장고 재료 목록 전체 조회
+ *     description: |
+ *       현재 로그인한 사용자의 냉장고 재료 전체를 가져옵니다.
+ *       - 마스터 재료명 우선, 없으면 custom_name 사용
+ *       - `d_day`: 유통기한까지 남은 일수 (음수 = 이미 만료, null = 유통기한 미입력)
+ *       - 정렬: 유통기한 임박순 (오름차순), 유통기한 없는 항목은 뒤로
+ *     tags: [Fridge]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 냉장고 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       item_id:
+ *                         type: integer
+ *                       name:
+ *                         type: string
+ *                       icon_url:
+ *                         type: string
+ *                         nullable: true
+ *                       quantity:
+ *                         type: number
+ *                         nullable: true
+ *                       unit:
+ *                         type: string
+ *                         nullable: true
+ *                       expiry_date:
+ *                         type: string
+ *                         format: date
+ *                         nullable: true
+ *                       d_day:
+ *                         type: integer
+ *                         nullable: true
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 내부 오류
+ */
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session || !session.user || !('id' in session.user)) {
+      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
+    }
+
+    const userId = parseInt(session.user.id as string, 10);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const items = await prisma.fridge_items.findMany({
+      where: { user_id: userId },
+      select: {
+        item_id: true,
+        custom_name: true,
+        quantity: true,
+        unit: true,
+        expiry_date: true,
+        ingredients_master: {
+          select: { name: true, icon_url: true },
+        },
+      },
+      orderBy: { expiry_date: 'asc' },
+    });
+
+    const data = items.map((item) => {
+      const name = item.ingredients_master?.name ?? item.custom_name ?? '알 수 없는 재료';
+      const iconUrl = item.ingredients_master?.icon_url ?? null;
+
+      let dDay: number | null = null;
+      if (item.expiry_date) {
+        const expiry = new Date(item.expiry_date);
+        expiry.setHours(0, 0, 0, 0);
+        dDay = Math.ceil((expiry.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      }
+
+      return {
+        item_id: item.item_id,
+        name,
+        icon_url: iconUrl,
+        quantity: item.quantity !== null ? Number(item.quantity) : null,
+        unit: item.unit,
+        expiry_date: item.expiry_date ? item.expiry_date.toISOString().split('T')[0] : null,
+        d_day: dDay,
+      };
+    });
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: unknown) {
+    console.error('GET /api/fridge Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: '서버 에러가 발생했습니다.',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * @swagger
+ * /api/fridge:
  *   post:
  *     summary: 냉장고에 새로운 식재료 추가
  *     description: |

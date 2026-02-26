@@ -7,6 +7,106 @@ import { cooking_logs_status } from '@/generated/client/enums';
 /**
  * @swagger
  * /api/cooking-logs:
+ *   get:
+ *     summary: 전체 요리 기록 리스트 조회
+ *     description: |
+ *       현재 로그인한 사용자의 전체 요리 기록을 최신순으로 반환합니다.
+ *       - 레시피 제목(`recipes.title`) 포함
+ *       - 정렬: `cooked_at` 내림차순
+ *     tags: [Logs]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 요리 기록 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       log_id:
+ *                         type: integer
+ *                       recipe_id:
+ *                         type: integer
+ *                         nullable: true
+ *                       recipe_title:
+ *                         type: string
+ *                         nullable: true
+ *                       status:
+ *                         type: string
+ *                         enum: [SUCCESS, REGRET, FAIL]
+ *                       lesson_note:
+ *                         type: string
+ *                         nullable: true
+ *                       companion:
+ *                         type: string
+ *                         nullable: true
+ *                       cooked_at:
+ *                         type: string
+ *                         format: date-time
+ *                         nullable: true
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 내부 오류
+ */
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !('id' in session.user)) {
+      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
+    }
+
+    const userId = parseInt(session.user.id as string, 10);
+
+    const logs = await prisma.cooking_logs.findMany({
+      where: { user_id: userId },
+      select: {
+        log_id: true,
+        recipe_id: true,
+        status: true,
+        lesson_note: true,
+        companion: true,
+        cooked_at: true,
+        recipes: { select: { title: true } },
+      },
+      orderBy: { cooked_at: 'desc' },
+    });
+
+    const data = logs.map((log) => ({
+      log_id: log.log_id,
+      recipe_id: log.recipe_id,
+      recipe_title: log.recipes?.title ?? null,
+      status: log.status,
+      lesson_note: log.lesson_note,
+      companion: log.companion,
+      cooked_at: log.cooked_at,
+    }));
+
+    return NextResponse.json({ success: true, data });
+  } catch (error: unknown) {
+    console.error('GET /api/cooking-logs Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: '서버 에러가 발생했습니다.',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * @swagger
+ * /api/cooking-logs:
  *   post:
  *     summary: 요리 완료 후 새로운 요리 기록(Cooking Log) 작성
  *     description: |
