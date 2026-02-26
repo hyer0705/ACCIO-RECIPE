@@ -12,7 +12,7 @@ jobs:
   lint:
     name: Lint Check
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -45,18 +45,18 @@ jobs:
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            
+
             cd ${{ secrets.TARGET_DIR }}
-            
+
             # 스크립트 실행 중 에러 발생 시 즉시 중단
             set -e
-            
+
             # EC2 로컬에 남아있는 변경사항(package-lock.json 등)을 강제 초기화
             git checkout .
             git pull origin ${{ github.ref_name }}
-            
+
             npm install
             npx prisma generate
             npm run build
-            
+
             pm2 restart all
