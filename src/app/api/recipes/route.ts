@@ -6,6 +6,149 @@ import prisma from '@/lib/prisma';
 /**
  * @swagger
  * /api/recipes:
+ *   get:
+ *     summary: 나의 레시피 목록 조회
+ *     description: |
+ *       사용자의 레시피 목록을 반환합니다.
+ *       - 레시피별 최근 요리 기록 1개 ("\uc9c0난번 메모" 배지 용) 포함
+ *       - 상단 통계: 전체 누적 조리 횟수, 전체 평균 성공률
+ *       - 정렬: 생성일 내림차순
+ *     tags: [Recipes]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: 레시피 목록 조회 성공
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 stats:
+ *                   type: object
+ *                   properties:
+ *                     total_cooking_count:
+ *                       type: integer
+ *                     overall_success_rate:
+ *                       type: number
+ *                       nullable: true
+ *                 data:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       recipe_id:
+ *                         type: integer
+ *                       title:
+ *                         type: string
+ *                       thumbnail_url:
+ *                         type: string
+ *                         nullable: true
+ *                       difficulty:
+ *                         type: string
+ *                         nullable: true
+ *                       servings:
+ *                         type: integer
+ *                         nullable: true
+ *                       latest_log:
+ *                         type: object
+ *                         nullable: true
+ *                         properties:
+ *                           log_id:
+ *                             type: integer
+ *                           status:
+ *                             type: string
+ *                           lesson_note:
+ *                             type: string
+ *                           cooked_at:
+ *                             type: string
+ *       401:
+ *         description: 인증 실패
+ *       500:
+ *         description: 서버 내부 오류
+ */
+export async function GET() {
+  try {
+    const session = await getServerSession(authOptions);
+    if (!session || !session.user || !('id' in session.user)) {
+      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
+    }
+
+    const userId = parseInt(session.user.id as string, 10);
+
+    // 레시피 목록 + 각 레시피별 최신 로그 1개
+    const [recipes, allLogs] = await Promise.all([
+      prisma.recipes.findMany({
+        where: { user_id: userId },
+        select: {
+          recipe_id: true,
+          title: true,
+          thumbnail_url: true,
+          difficulty: true,
+          servings: true,
+          created_at: true,
+          cooking_logs: {
+            orderBy: { cooked_at: 'desc' },
+            take: 1,
+            select: {
+              log_id: true,
+              status: true,
+              lesson_note: true,
+              cooked_at: true,
+            },
+          },
+        },
+        orderBy: { created_at: 'desc' },
+      }),
+      // 전체 누적 통계용 로그
+      prisma.cooking_logs.findMany({
+        where: { user_id: userId },
+        select: { status: true },
+      }),
+    ]);
+
+    // 전체 누적 성공률
+    const totalCount = allLogs.length;
+    const successCount = allLogs.filter((l) => l.status === 'SUCCESS').length;
+    const overallSuccessRate =
+      totalCount > 0 ? Math.round((successCount / totalCount) * 100) : null;
+
+    const data = recipes.map((r) => ({
+      recipe_id: r.recipe_id,
+      title: r.title,
+      thumbnail_url: r.thumbnail_url,
+      difficulty: r.difficulty,
+      servings: r.servings,
+      created_at: r.created_at,
+      latest_log: r.cooking_logs[0] ?? null,
+    }));
+
+    return NextResponse.json({
+      success: true,
+      stats: {
+        total_cooking_count: totalCount,
+        overall_success_rate: overallSuccessRate,
+      },
+      data,
+    });
+  } catch (error: unknown) {
+    console.error('GET /api/recipes Error:', error);
+    return NextResponse.json(
+      {
+        success: false,
+        message: '서버 에러가 발생했습니다.',
+        error: error instanceof Error ? error.message : String(error),
+      },
+      { status: 500 },
+    );
+  }
+}
+
+/**
+ * @swagger
+ * /api/recipes:
  *   post:
  *     summary: 새로운 레시피 등록
  *     description: 화면에 표시된 레시피 데이터(추출 결과 또는 수동 입력)를 데이터베이스에 최종 저장합니다.
