@@ -23,9 +23,9 @@ export default function PreviewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF6E9] font-sans">
+    <div className="h-screen flex flex-col bg-[#FAF6E9] font-sans overflow-hidden">
       <Header />
-      <main className="pb-16">
+      <main className="flex-1 overflow-hidden">
         <RecipePreview data={recipeData} />
       </main>
     </div>
