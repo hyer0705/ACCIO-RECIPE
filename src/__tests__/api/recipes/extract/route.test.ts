@@ -85,7 +85,6 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     });
 
     const res = await POST(req);
-    const res = await POST(req);
     const data = await res.json();
 
     // Gemini API 호출 검증
