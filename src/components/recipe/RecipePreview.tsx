@@ -189,7 +189,7 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
 
           {/* 레시피 미리보기 카드 */}
           <div className="bg-white rounded-[2rem] p-8 shadow-sm flex-1 relative flex flex-col overflow-hidden">
-            <h2 className="text-xl font-bold text-[#3C2D23] mb-6 shrink-0">최종 레시피 확인</h2>
+            <h2 className="text-xl font-bold text-[#3C2D23] mb-6 shrink-0">최종 레시피 확인하기</h2>
             <div className="overflow-y-auto flex-1 pr-2 pb-8">
               <ol className="space-y-6">
                 {editedSteps.map((step, idx) => (
