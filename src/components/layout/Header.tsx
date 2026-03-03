@@ -27,9 +27,9 @@ export default function Header() {
           레시피 입력
         </Link>
         <Link
-          href="/library"
+          href="/my/archive"
           className={`transition-colors ${
-            pathname === '/library'
+            pathname.startsWith('/my')
               ? 'text-[#FF5722] font-bold text-[16px]'
               : 'hover:text-[#FF5A28]'
           }`}
