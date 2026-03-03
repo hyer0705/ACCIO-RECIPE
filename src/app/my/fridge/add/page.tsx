@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Calendar, ChevronLeft } from 'lucide-react';
+import { QuantityInput } from '@/components/ui/QuantityInput';
 
 export default function AddFridgeItemPage() {
   const router = useRouter();
@@ -79,23 +80,12 @@ export default function AddFridgeItemPage() {
         {/* Quantity */}
         <div className="mb-8">
           <label className="block text-[15px] font-bold text-[#3C2D23] mb-3">수량</label>
-          <div className="flex justify-between items-center bg-[#FAFAFA] border border-[#EBEBEB] rounded-2xl px-5 py-3">
-            <span className="text-[15px] font-medium text-[#3C2D23]">{quantity} 개</span>
-            <div className="flex gap-3">
-              <button
-                onClick={handleDecrease}
-                className="w-[34px] h-[34px] rounded-full bg-[#EBEBEB] flex items-center justify-center text-[18px] text-[#8C847E] font-medium hover:bg-[#D9D9D9] transition-colors pb-0.5"
-              >
-                -
-              </button>
-              <button
-                onClick={handleIncrease}
-                className="w-[34px] h-[34px] rounded-full bg-[#FF5A28] flex items-center justify-center text-[20px] text-white font-medium hover:bg-[#E04D20] transition-colors pb-0.5"
-              >
-                +
-              </button>
-            </div>
-          </div>
+          <QuantityInput
+            quantity={quantity}
+            onIncrease={handleIncrease}
+            onDecrease={handleDecrease}
+            label="수량"
+          />
         </div>
 
         {/* Expiry Date */}
@@ -106,7 +96,7 @@ export default function AddFridgeItemPage() {
               type="date"
               value={expiryDate}
               onChange={(e) => setExpiryDate(e.target.value)}
-              className="bg-transparent text-[15px] font-medium text-[#3C2D23] outline-none flex-1 cursor-pointer w-full"
+              className="bg-transparent text-[15px] font-medium text-[#3C2D23] outline-none flex-1 cursor-pointer w-full [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full"
             />
             <div className="absolute right-5 pointer-events-none">
               <Calendar className="text-[#3C2D23] w-6 h-6" />

@@ -89,9 +89,12 @@ export default function MyFridgePage() {
                   ) : (
                     <span className="text-gray-400 font-medium">기한 없음</span>
                   )}
-                  <button className="bg-[#F8F9FA] text-[#8C847E] text-[13px] px-4 py-1.5 rounded-lg border border-[#E9ECEF] hover:bg-[#E9ECEF] transition-colors font-medium">
+                  <Link
+                    href={`/my/fridge/${item.item_id}/edit`}
+                    className="bg-[#F8F9FA] text-[#8C847E] text-[13px] px-4 py-1.5 rounded-lg border border-[#E9ECEF] hover:bg-[#E9ECEF] transition-colors font-medium"
+                  >
                     수정
-                  </button>
+                  </Link>
                 </div>
               </div>
             );

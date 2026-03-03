@@ -155,7 +155,7 @@ export default function MyDashboardPage() {
       {/* Bottom Buttons */}
       <div className="flex gap-6">
         <Link
-          href="/recipes"
+          href="/"
           className="flex-1 flex items-center justify-center bg-[#3C2D23] text-white py-5 rounded-[20px] font-bold text-[16px] hover:bg-[#2C211A] transition-colors"
         >
           새 레시피 분석하기
