@@ -17,9 +17,9 @@ export default function MyPageLayout({ children }: { children: React.ReactNode }
   return (
     <div className="min-h-screen flex flex-col bg-[#FDF9F1]">
       <Header />
-      <div className="flex flex-1 max-w-7xl w-full mx-auto px-8">
+      <div className="flex flex-1 w-full md:pr-8">
         {/* LNB (Local Navigation Bar) */}
-        <aside className="w-56 py-12 shrink-0">
+        <aside className="w-[260px] bg-white/50 py-12 pl-8 pr-4 shrink-0 h-[calc(100vh-77px)] sticky top-[77px] overflow-y-auto">
           <nav className="flex flex-col gap-6">
             {navItems.map((item) => {
               const isActive = pathname.startsWith(item.href);
@@ -39,9 +39,7 @@ export default function MyPageLayout({ children }: { children: React.ReactNode }
         </aside>
 
         {/* Content Area */}
-        <main className="flex-1 py-12 pl-12 border-l border-[#F0EBE0] min-h-[calc(100vh-80px)]">
-          {children}
-        </main>
+        <main className="flex-1 py-12 pl-8 lg:pl-12 border-l border-[#F0EBE0]">{children}</main>
       </div>
     </div>
   );
