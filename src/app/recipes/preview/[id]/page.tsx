@@ -54,7 +54,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
   } = useQuery({
     queryKey: ['recipe', recipeId],
     queryFn: async () => {
-      const res = await fetch(`/api/recipes/${recipeId}`);
+      const res = await fetch(`/api/recipes/${recipeId}`, { cache: 'no-store' });
       if (!res.ok) {
         throw new Error('API Error');
       }

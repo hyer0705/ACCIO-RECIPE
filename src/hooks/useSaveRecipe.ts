@@ -5,7 +5,10 @@ import { ExtractedRecipeData } from '@/store/useRecipeStore';
 interface SaveRecipeResponse {
   success: boolean;
   message: string;
-  data?: unknown;
+  data?: {
+    recipe_id: number;
+    title: string;
+  };
   error?: string | string[];
 }
 
@@ -32,10 +35,13 @@ export const useSaveRecipe = () => {
 
       return data;
     },
-    onSuccess: () => {
-      // 저장이 성공하면, 나의 서재(레시피 목록) 페이지가 있다면 거기로 이동
-      alert('레시피가 성공적으로 저장되었습니다!');
-      router.push('/'); // TODO: 나의 요리 서재 페이지 경로 확인 후 변경 (일단 홈으로 임시 이동)
+    onSuccess: (responseData) => {
+      // 저장이 성공하면, 해당 레시피의 조리 모드 페이지로 이동
+      if (responseData.data?.recipe_id) {
+        router.push(`/recipes/${responseData.data.recipe_id}/cook`);
+      } else {
+        router.push('/');
+      }
     },
     onError: (error) => {
       alert(`저장 중 오류가 발생했습니다: ${error.message}`);

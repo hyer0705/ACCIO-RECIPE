@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 
 // URL 검증 스키마
 // youtube, youtu.be, blog.naver.com 등을 허용하는 정규식 작성 (필요에 따라 더 확장 가능)
-const urlRegex = /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|blog\.naver\.com)\/.+$/;
+const urlRegex =
+  /^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be|m\.blog\.naver\.com|blog\.naver\.com)\/.+$/;
 
 const formSchema = z.object({
   url: z
