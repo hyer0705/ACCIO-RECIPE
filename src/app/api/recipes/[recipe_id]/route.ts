@@ -146,6 +146,8 @@ export async function GET(req: Request, context: RouteContext) {
         thumbnail_url: true,
         difficulty: true,
         servings: true,
+        status: true,
+        errorReason: true,
         created_at: true,
         recipe_ingredients: {
           select: {
@@ -210,6 +212,8 @@ export async function GET(req: Request, context: RouteContext) {
         difficulty: recipe.difficulty,
         base_servings: baseServings,
         requested_servings: targetServings,
+        status: recipe.status,
+        errorReason: recipe.errorReason,
         created_at: recipe.created_at,
         latest_log: recipe.cooking_logs[0] ?? null,
         ingredients,

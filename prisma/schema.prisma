@@ -90,6 +90,8 @@ model recipes {
   difficulty         recipes_difficulty?
   servings           Int?                 @default(1)
   created_at         DateTime?            @default(now()) @db.Timestamp(0)
+  errorReason        String?              @db.Text
+  status             RecipeStatus         @default(PENDING)
   cooking_logs       cooking_logs[]
   recipe_ingredients recipe_ingredients[]
   recipe_steps       recipe_steps[]
@@ -111,19 +113,25 @@ model user_settings {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model users {
-  user_id         Int                   @id @default(autoincrement())
-  nickname        String                @db.VarChar(50)
-  email           String?               @db.VarChar(100)
-  social_provider users_social_provider
-  social_id       String                @unique(map: "social_id") @db.VarChar(255)
+  user_id          Int                   @id @default(autoincrement())
+  nickname         String                @db.VarChar(50)
+  email            String?               @db.VarChar(100)
+  social_provider  users_social_provider
+  social_id        String                @unique(map: "social_id") @db.VarChar(255)
   profile_image    String?               @db.Text
   created_at       DateTime?             @default(now()) @db.Timestamp(0)
   terms_agreements Boolean               @default(true)
   terms_agreed_at  DateTime?             @default(now()) @db.Timestamp(0)
   cooking_logs     cooking_logs[]
-  fridge_items    fridge_items[]
-  recipes         recipes[]
-  user_settings   user_settings?
+  fridge_items     fridge_items[]
+  recipes          recipes[]
+  user_settings    user_settings?
+}
+
+enum RecipeStatus {
+  PENDING
+  COMPLETED
+  FAILED
 }
 
 enum users_social_provider {
@@ -134,8 +142,8 @@ enum users_social_provider {
 
 enum cooking_logs_status {
   SUCCESS @map("성공")
-  REGRET @map("아쉬움")
-  FAIL @map("실패")
+  REGRET  @map("아쉬움")
+  FAIL    @map("실패")
 }
 
 enum recipes_difficulty {

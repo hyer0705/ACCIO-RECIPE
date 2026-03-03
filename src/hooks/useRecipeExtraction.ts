@@ -1,16 +1,15 @@
 import { useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { ExtractedRecipeData, useRecipeStore } from '@/store/useRecipeStore';
+// unused import removed
 
 interface ExtractResponse {
   success: boolean;
-  data?: ExtractedRecipeData;
+  recipeId?: number;
   error?: string;
 }
 
 export const useRecipeExtraction = () => {
   const router = useRouter();
-  const setRecipeData = useRecipeStore((state) => state.setRecipeData);
 
   return useMutation({
     mutationFn: async (url: string) => {
@@ -24,17 +23,15 @@ export const useRecipeExtraction = () => {
 
       const data: ExtractResponse = await response.json();
 
-      if (!response.ok || !data.success) {
+      if (!response.ok || !data.success || !data.recipeId) {
         throw new Error(data.error || '레시피 추출에 실패했습니다.');
       }
 
-      return data.data!;
+      return data.recipeId;
     },
-    onSuccess: (data) => {
-      // 1. 전역 상태에 추출된 데이터 저장
-      setRecipeData(data);
-      // 2. 미리보기 페이지로 이동
-      router.push('/recipes/preview');
+    onSuccess: (recipeId) => {
+      // 바로 생성된 레시피 ID로 이동하며 UI 렌더링을 페이지쪽 React Query에 위임
+      router.push(`/recipes/preview/${recipeId}`);
     },
     onError: (error) => {
       // 에러 발생 시 사용자에게 알림

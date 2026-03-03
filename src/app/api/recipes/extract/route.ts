@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { load } from 'cheerio';
 import { GoogleGenAI, Type } from '@google/genai';
+import prisma from '@/lib/prisma';
 
 /**
  * @swagger
@@ -181,15 +182,45 @@ export async function POST(req: Request) {
       }
     }
 
-    // 2. Gemini 호출
-    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+    // 2. 초기 PENDING 레시피 생성 및 응답 (즉시 응답)
+    const newRecipe = await prisma.recipes.create({
+      data: {
+        title: fallbackTitle || '이름 모를 레시피',
+        source_url: url,
+        status: 'PENDING',
+        thumbnail_url: thumbnailUrl,
+      },
+    });
+
+    // 3. 백그라운드 추출 프로세스 실행 트리거 (await 하지 않음)
+    processExtraction(newRecipe.recipe_id, contentsToAnalyze, fallbackTitle).catch((err) => {
+      console.error('Background execution failed implicitly:', err);
+    });
+
+    // 4. 즉각적인 응답 반환
+    return NextResponse.json({ success: true, recipeId: newRecipe.recipe_id }, { status: 202 });
+  } catch (error: unknown) {
+    console.error('API Error (/api/recipes/extract):', error);
+    const errorMessage =
+      error instanceof Error ? error.message : '레시피 추출 중 오류가 발생했습니다.';
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+  }
+}
+
+// 추출 로직을 담당할 별도의 비동기 함수
+async function processExtraction(
+  recipeId: number,
+  contentsToAnalyze: Array<string | { fileData: { fileUri: string; mimeType: string } }>,
+  fallbackTitle: string,
+) {
+  try {
+    const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
     // 프롬프트 구성
     const systemInstruction =
       "너는 최고의 요리 전문가이자 레시피 구조화 AI야. 주어진 동영상이나 텍스트를 보고 오직 '요리 레시피'와 관련된 필수 정보(제목, 난이도, 몇인분, 재료, 스텝)만 정확하게 추출해야 해. 영상에 자막이나 설명이 부족하면 화면의 시각 정보를 종합하여 최대한 논리적인 레시피를 만들어내라. 결과는 반드시 정해진 JSON 스키마에 맞추어서 반환해라. **중요: 재료의 계량(숫자, 단위)은 영상의 음성이나 자막에서 언급된 텍스트를 100% 최우선으로 따르며, 화면의 저울 숫자보다 유튜버가 제시한 레시피 기준량을 정확히 추출해라. 임의로 수치를 추정하거나 변경하지 마라.**";
     contentsToAnalyze.push('위 컨텐츠를 바탕으로 요리 레시피를 정리해서 JSON으로 추출해줘.');
 
-    // Structured Output 스키마 구성 (Gemini 지원 형태)
     const recipeSchema = {
       type: Type.OBJECT,
       properties: {
@@ -238,7 +269,7 @@ export async function POST(req: Request) {
       required: ['title', 'difficulty', 'servings', 'ingredients', 'steps'],
     };
 
-    console.log('Gemini API 호출 시작...');
+    console.log(`Gemini API 호출 시작 (Recipe ID: ${recipeId})...`);
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: contentsToAnalyze,
@@ -257,23 +288,66 @@ export async function POST(req: Request) {
 
     const recipeData = JSON.parse(llmContent);
 
-    // 메타데이터 병합
-    recipeData.source_url = url;
-    recipeData.thumbnail_url = thumbnailUrl;
-    if (!recipeData.title || recipeData.title.trim() === '') {
-      recipeData.title = fallbackTitle || '이름 모를 레시피';
-    }
+    // 완료 상태 업데이트 (Transaction)
+    await prisma.$transaction(async (tx) => {
+      // 1. 레시피 기본 정보 업데이트
+      await tx.recipes.update({
+        where: { recipe_id: recipeId },
+        data: {
+          title:
+            recipeData.title && recipeData.title.trim() !== ''
+              ? recipeData.title
+              : fallbackTitle || '이름 모를 레시피',
+          difficulty: recipeData.difficulty,
+          servings: recipeData.servings,
+          status: 'COMPLETED',
+        },
+      });
 
-    console.log('Gemini API 파싱 완료:', recipeData.title);
+      // 2. 재료 업데이트 (recipe_ingredients)
+      if (recipeData.ingredients && recipeData.ingredients.length > 0) {
+        await tx.recipe_ingredients.createMany({
+          data: recipeData.ingredients.map(
+            (ing: { name: string; amount?: number; unit?: string }) => ({
+              recipe_id: recipeId,
+              name: ing.name,
+              amount: ing.amount,
+              unit: ing.unit,
+            }),
+          ),
+        });
+      }
 
-    return NextResponse.json({
-      success: true,
-      data: recipeData,
+      // 3. 스텝 업데이트 (recipe_steps)
+      if (recipeData.steps && recipeData.steps.length > 0) {
+        await tx.recipe_steps.createMany({
+          data: recipeData.steps.map(
+            (step: { step_order: number; instruction: string; timer_seconds?: number }) => ({
+              recipe_id: recipeId,
+              step_order: step.step_order,
+              instruction: step.instruction,
+              timer_seconds: step.timer_seconds || 0,
+            }),
+          ),
+        });
+      }
     });
+
+    console.log(`Gemini API 파싱 및 DB 저장 완료 (Recipe ID: ${recipeId})`);
   } catch (error: unknown) {
-    console.error('API Error (/api/recipes/extract):', error);
-    const errorMessage =
-      error instanceof Error ? error.message : '레시피 추출 중 오류가 발생했습니다.';
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    console.error(`Background Extraction Error (Recipe ID: ${recipeId}):`, error);
+
+    // 실패 상태 업데이트
+    try {
+      await prisma.recipes.update({
+        where: { recipe_id: recipeId },
+        data: {
+          status: 'FAILED',
+          errorReason: error instanceof Error ? error.message : '레시피 추출 중 오류 발생',
+        },
+      });
+    } catch (saveError) {
+      console.error(`Failed to save FAILED status to DB (Recipe ID: ${recipeId}):`, saveError);
+    }
   }
 }

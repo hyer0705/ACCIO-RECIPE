@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Minus, Plus, Edit2, Check } from 'lucide-react';
 import { ExtractedRecipeData } from '@/store/useRecipeStore';
 import { useSaveRecipe } from '@/hooks/useSaveRecipe';
