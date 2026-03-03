@@ -56,7 +56,7 @@ export default function AddFridgeItemPage() {
       <div className="w-full max-w-[600px] flex items-center justify-center mb-10 relative">
         <button
           onClick={() => router.push('/my/fridge')}
-          className="absolute left-0 p-2 text-[#3C2D23] hover:bg-gray-200 rounded-full transition-colors flex items-center justify-center"
+          className="cursor-pointer absolute left-0 p-2 text-[#3C2D23] hover:bg-gray-200 rounded-full transition-colors flex items-center justify-center"
         >
           <ChevronLeft className="w-7 h-7" />
         </button>

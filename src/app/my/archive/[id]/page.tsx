@@ -2,7 +2,9 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import React from 'react';
+import { ChevronLeft } from 'lucide-react';
 
 interface RecipeDetail {
   recipe_id: number;
@@ -29,6 +31,7 @@ interface RecipeDetail {
 }
 
 export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const router = useRouter();
   const unwrappedParams = React.use(params);
   const recipeId = unwrappedParams.id;
 
@@ -84,7 +87,15 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="max-w-[1000px]">
-      <h1 className="text-[28px] font-bold text-[#3C2D23] mb-6">{recipe.title}</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => router.push('/my/archive')}
+          className="cursor-pointer p-2 text-[#3C2D23] hover:bg-gray-100 rounded-full transition-colors flex items-center justify-center -ml-2"
+        >
+          <ChevronLeft className="w-7 h-7" />
+        </button>
+        <h1 className="text-[28px] font-bold text-[#3C2D23]">{recipe.title}</h1>
+      </div>
 
       {/* Alert / Lesson Note */}
       {recipe.latest_log && recipe.latest_log.lesson_note && (
