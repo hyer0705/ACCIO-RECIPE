@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
+import React from 'react';
 
 interface RecipeDetail {
   recipe_id: number;
@@ -27,8 +28,9 @@ interface RecipeDetail {
   }[];
 }
 
-export default function MyArchiveDetailPage({ params }: { params: { id: string } }) {
-  const recipeId = params.id;
+export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(params);
+  const recipeId = unwrappedParams.id;
 
   const {
     data: recipe,
