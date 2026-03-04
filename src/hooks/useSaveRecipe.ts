@@ -12,7 +12,7 @@ interface SaveRecipeResponse {
   error?: string | string[];
 }
 
-export const useSaveRecipe = () => {
+export const useSaveRecipe = (targetServings?: number) => {
   const router = useRouter();
 
   return useMutation({
@@ -38,7 +38,8 @@ export const useSaveRecipe = () => {
     onSuccess: (responseData) => {
       // 저장이 성공하면, 해당 레시피의 조리 모드 페이지로 이동
       if (responseData.data?.recipe_id) {
-        router.push(`/recipes/${responseData.data.recipe_id}/cook`);
+        const url = `/recipes/${responseData.data.recipe_id}/cook${targetServings ? `?servings=${targetServings}` : ''}`;
+        router.push(url);
       } else {
         router.push('/');
       }

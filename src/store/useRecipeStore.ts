@@ -14,6 +14,7 @@ export interface ExtractionStep {
 }
 
 export interface ExtractedRecipeData {
+  recipe_id?: number;
   title: string;
   difficulty: 'Easy' | 'Medium' | 'Hard' | string | null;
   servings: number;

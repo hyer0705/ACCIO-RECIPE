@@ -45,7 +45,6 @@ export default function CookLogPage({ params }: Props) {
     try {
       const resolvedParams = await params;
       const recipeId = parseInt(resolvedParams.id, 10);
-      const finalCompanion = isCustom ? customCompanion.trim() : companion;
 
       const res = await fetch('/api/cooking-logs', {
         method: 'POST',
@@ -54,7 +53,7 @@ export default function CookLogPage({ params }: Props) {
           recipe_id: recipeId,
           status,
           lesson_note: lessonNote.trim() || undefined,
-          companion: finalCompanion || undefined,
+          companion: isCustom ? customCompanion.trim() || undefined : companion.trim() || undefined,
         }),
       });
 

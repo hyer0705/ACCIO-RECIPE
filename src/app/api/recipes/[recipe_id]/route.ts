@@ -165,6 +165,7 @@ export async function GET(req: Request, context: RouteContext) {
             instruction: true,
             step_image_url: true,
             timer_seconds: true,
+            step_ingredients: true,
           },
           orderBy: { step_order: 'asc' },
         },

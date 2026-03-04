@@ -139,11 +139,15 @@ export async function GET() {
         orderBy: { expiry_date: 'asc' },
       }),
 
-      // 가장 최근 회고 노트 (lesson_note가 있는 것만)
+      // 가장 최근 회고 노트 (lesson_note가 있는 것만, 본인이 작성한 COMPLETED 레시피)
       prisma.cooking_logs.findFirst({
         where: {
           user_id: userId,
           lesson_note: { not: null },
+          recipes: {
+            user_id: userId,
+            status: 'COMPLETED',
+          },
         },
         select: {
           log_id: true,

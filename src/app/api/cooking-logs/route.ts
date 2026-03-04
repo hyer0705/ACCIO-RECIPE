@@ -67,7 +67,13 @@ export async function GET() {
     const userId = parseInt(session.user.id as string, 10);
 
     const logs = await prisma.cooking_logs.findMany({
-      where: { user_id: userId },
+      where: {
+        user_id: userId,
+        recipes: {
+          user_id: userId,
+          status: 'COMPLETED',
+        },
+      },
       select: {
         log_id: true,
         recipe_id: true,

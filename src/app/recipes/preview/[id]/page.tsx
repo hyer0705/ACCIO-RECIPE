@@ -1,12 +1,135 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import RecipePreview from '@/components/recipe/RecipePreview';
 import { useQuery } from '@tanstack/react-query';
 import React from 'react';
+import { ExtractedRecipeData } from '@/store/useRecipeStore';
 
-// 간단한 로딩용 Skeleton 컴포넌트
+interface RecipeResponse {
+  data?: {
+    status?: string;
+    errorReason?: string;
+    requested_servings?: number;
+    base_servings?: number;
+  } & Partial<ExtractedRecipeData>;
+}
+
+export default function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const unwrappedParams = React.use(params);
+  const recipeId = unwrappedParams.id;
+  const searchParams = useSearchParams();
+  const initialServings = searchParams.get('servings')
+    ? parseInt(searchParams.get('servings') as string, 10)
+    : null;
+
+  const {
+    data: recipeResponse,
+    isLoading,
+    isError,
+  } = useQuery<RecipeResponse, Error, RecipeResponse>({
+    queryKey: ['recipe', recipeId],
+    queryFn: async () => {
+      // API 자체도 servings 쿼리를 받으면 배율을 이미 계산해서 리턴하도록 구현되어 있음
+      const url = initialServings
+        ? `/api/recipes/${recipeId}?servings=${initialServings}`
+        : `/api/recipes/${recipeId}`;
+      const res = await fetch(url, { cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error('API Error');
+      }
+      return res.json();
+    },
+    refetchInterval: (query) => {
+      const currentStatus = query.state.data?.data?.status;
+      const hasPopulatedData =
+        (query.state.data?.data?.ingredients?.length ?? 0) > 0 ||
+        (query.state.data?.data?.steps?.length ?? 0) > 0;
+
+      // 재료나 순서가 이미 있는 DB 기존 레시피는 polling하지 않음
+      if (currentStatus === 'PENDING' && !hasPopulatedData) {
+        return 3000;
+      }
+      return false;
+    },
+  });
+
+  const status = recipeResponse?.data?.status;
+  const hasPopulatedData =
+    (recipeResponse?.data?.ingredients?.length ?? 0) > 0 ||
+    (recipeResponse?.data?.steps?.length ?? 0) > 0;
+
+  // 과거 레시피는 status가 PENDING이어도 이미 데이터가 존재할 수 있음
+  const isActuallyPending = status === 'PENDING' && !hasPopulatedData;
+
+  if (isActuallyPending) {
+    return (
+      <div className="h-screen flex flex-col font-sans overflow-hidden">
+        <Header />
+        <LoadingReportUI />
+      </div>
+    );
+  }
+
+  // 데이터가 아직 아예 없으면서 로딩 중일 때만 초기 로딩 UI 표시
+  // recipeResponse가 undefined거나, 속성 'data'가 없는 경우를 처리하기 위해 in 연산자 사용
+  const hasData =
+    recipeResponse &&
+    typeof recipeResponse === 'object' &&
+    'data' in recipeResponse &&
+    !!recipeResponse.data;
+  if (isLoading && !hasData) {
+    return (
+      <div className="h-screen flex flex-col font-sans overflow-hidden">
+        <Header />
+        <InitialLoadingUI />
+      </div>
+    );
+  }
+
+  if (isError || recipeResponse?.data?.status === 'FAILED') {
+    return (
+      <div className="h-screen flex flex-col font-sans overflow-hidden">
+        <Header />
+        <FailedReportUI reason={recipeResponse?.data?.errorReason} />
+      </div>
+    );
+  }
+
+  const recipeData = recipeResponse?.data;
+  if (!recipeData) {
+    return null;
+  }
+
+  // API가 보내준 base_servings 대신 실제 화면에 쓰일 servings 값(requested_servings)을 보장
+  // Next.js API의 /api/recipes/[id] (GET)는 requested_servings를 반환해줌
+  const finalRecipeData = {
+    ...recipeData,
+    servings: recipeData.requested_servings || recipeData.base_servings || recipeData.servings || 1,
+  };
+
+  return (
+    <div className="h-screen flex flex-col bg-[#FAF6E9] font-sans overflow-hidden">
+      <Header />
+      <main className="flex-1 overflow-hidden">
+        <RecipePreview data={finalRecipeData as ExtractedRecipeData} />
+      </main>
+    </div>
+  );
+}
+
+// 간단한 초기 로딩용 UI 컴포넌트 (데이터 로딩 중)
+function InitialLoadingUI() {
+  return (
+    <div className="flex-1 flex flex-col items-center justify-center bg-[#FAF6E9] p-4 text-center">
+      <div className="w-12 h-12 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-4"></div>
+      <h2 className="text-[18px] font-bold text-gray-800">레시피 정보를 불러오고 있어요... 👩‍🍳</h2>
+    </div>
+  );
+}
+
+// AI 분석 중일 때 보여지는 UI 컴포넌트
 function LoadingReportUI() {
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-[#FAF6E9] p-4 text-center">
@@ -39,67 +162,6 @@ function FailedReportUI({ reason }: { reason?: string }) {
       >
         홈으로 돌아가서 다시 시도하기
       </button>
-    </div>
-  );
-}
-
-export default function PreviewPage({ params }: { params: Promise<{ id: string }> }) {
-  const unwrappedParams = React.use(params);
-  const recipeId = unwrappedParams.id;
-
-  const {
-    data: recipeResponse,
-    isLoading,
-    isError,
-  } = useQuery({
-    queryKey: ['recipe', recipeId],
-    queryFn: async () => {
-      const res = await fetch(`/api/recipes/${recipeId}`, { cache: 'no-store' });
-      if (!res.ok) {
-        throw new Error('API Error');
-      }
-      return res.json();
-    },
-    refetchInterval: (query) => {
-      const currentStatus = query.state.data?.data?.status;
-      // 데이터가 PENDING인 경우에만 3초에 한 번씩 서버에 상태를 확인합니다.
-      if (currentStatus === 'PENDING') {
-        return 3000;
-      }
-      return false; // 완료되었거나 에러가 났으면 백그라운드 확인을 중지합니다.
-    },
-  });
-
-  if (isLoading || recipeResponse?.data?.status === 'PENDING') {
-    return (
-      <div className="h-screen flex flex-col font-sans overflow-hidden">
-        <Header />
-        <LoadingReportUI />
-      </div>
-    );
-  }
-
-  if (isError || recipeResponse?.data?.status === 'FAILED') {
-    return (
-      <div className="h-screen flex flex-col font-sans overflow-hidden">
-        <Header />
-        <FailedReportUI reason={recipeResponse?.data?.errorReason} />
-      </div>
-    );
-  }
-
-  if (!recipeResponse?.data) {
-    return null;
-  }
-
-  const recipeData = recipeResponse.data;
-
-  return (
-    <div className="h-screen flex flex-col bg-[#FAF6E9] font-sans overflow-hidden">
-      <Header />
-      <main className="flex-1 overflow-hidden">
-        <RecipePreview data={recipeData} />
-      </main>
     </div>
   );
 }

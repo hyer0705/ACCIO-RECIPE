@@ -69,13 +69,14 @@ model recipe_ingredients {
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 model recipe_steps {
-  step_id        Int      @id @default(autoincrement())
-  recipe_id      Int?
-  step_order     Int
-  instruction    String   @db.Text
-  step_image_url String?  @db.VarChar(255)
-  timer_seconds  Int?     @default(0)
-  recipes        recipes? @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_steps_ibfk_1")
+  step_id           Int      @id @default(autoincrement())
+  recipe_id         Int?
+  step_order        Int
+  instruction       String   @db.Text
+  step_image_url    String?  @db.VarChar(255)
+  timer_seconds     Int?     @default(0)
+  step_ingredients  Json?    // 해당 단계에 필요한 재료 이름 배열 (예: ["양파", "소금"])
+  recipes           recipes? @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_steps_ibfk_1")
 
   @@index([recipe_id], map: "recipe_id")
 }
