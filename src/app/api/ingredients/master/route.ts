@@ -4,57 +4,8 @@ import { authOptions } from '@/lib/authOptions';
 import prisma from '@/lib/prisma';
 
 /**
- * @swagger
- * /api/ingredients/master:
- *   get:
- *     summary: 마스터 재료 목록 검색 (자동완성)
- *     description: |
- *       냉장고 재료 추가 화면에서 자동완성을 위한 마스터 재료 목록을 조회합니다.
- *       - `q` 파라미터로 재료명 검색 (부분 일치, 대소문자 무시)
- *       - `q` 미입력 시 전체 목록 반환 (최대 50건)
- *     tags: [Ingredients]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: query
- *         name: q
- *         required: false
- *         schema:
- *           type: string
- *         description: 재료명 검색 키워드
- *         example: 대파
- *     responses:
- *       200:
- *         description: 마스터 재료 목록 조회 성공
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 success:
- *                   type: boolean
- *                 data:
- *                   type: array
- *                   items:
- *                     type: object
- *                     properties:
- *                       master_id:
- *                         type: integer
- *                       name:
- *                         type: string
- *                       category:
- *                         type: string
- *                         nullable: true
- *                       icon_url:
- *                         type: string
- *                         nullable: true
- *                       default_unit:
- *                         type: string
- *                         nullable: true
- *       401:
- *         description: 인증 실패
- *       500:
- *         description: 서버 내부 오류
+ * 마스터 재료 목록 검색 (자동완성)
+ * 현재 프론트엔드에서 사용되지 않아 Swagger 문서에서는 숨김 처리함
  */
 export async function GET(req: Request) {
   try {
