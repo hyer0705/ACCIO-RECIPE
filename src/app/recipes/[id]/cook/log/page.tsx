@@ -41,11 +41,6 @@ export default function CookLogPage({ params }: Props) {
   const [isSaving, setIsSaving] = useState(false);
 
   const handleSave = async () => {
-    if (!lessonNote.trim()) {
-      alert('오늘의 요리 경험을 한 줄이라도 적어주세요!');
-      return;
-    }
-
     setIsSaving(true);
     try {
       const resolvedParams = await params;
@@ -58,7 +53,7 @@ export default function CookLogPage({ params }: Props) {
         body: JSON.stringify({
           recipe_id: recipeId,
           status,
-          lesson_note: lessonNote.trim(),
+          lesson_note: lessonNote.trim() || undefined,
           companion: finalCompanion || undefined,
         }),
       });
@@ -71,6 +66,10 @@ export default function CookLogPage({ params }: Props) {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleSkip = () => {
+    router.push('/my/dashboard');
   };
 
   return (
@@ -89,7 +88,7 @@ export default function CookLogPage({ params }: Props) {
               <button
                 key={opt.value}
                 onClick={() => setStatus(opt.value as typeof status)}
-                className={`flex-1 py-3 rounded-2xl border-2 font-bold text-sm transition-all ${
+                className={`flex-1 py-3 rounded-2xl border-2 font-bold text-sm transition-all cursor-pointer ${
                   status === opt.value ? opt.activeColor : opt.inactiveColor
                 }`}
               >
@@ -100,7 +99,7 @@ export default function CookLogPage({ params }: Props) {
 
           {/* 요리 경험 기록 */}
           <label className="block text-sm font-bold text-[#3C2D23] mb-2">
-            오늘의 요리 경험 기록
+            오늘의 요리 경험 기록 (선택)
           </label>
           <textarea
             value={lessonNote}
@@ -112,7 +111,7 @@ export default function CookLogPage({ params }: Props) {
 
           {/* 누구와 함께 */}
           <label className="block text-sm font-bold text-[#3C2D23] mb-3">
-            누구와 함께 먹었나요?
+            누구와 함께 먹었나요? (선택)
           </label>
           <div className="flex flex-wrap gap-2 mb-8">
             {COMPANION_OPTIONS.map((c) => (
@@ -122,7 +121,7 @@ export default function CookLogPage({ params }: Props) {
                   setCompanion(c);
                   setIsCustom(false);
                 }}
-                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
+                className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all cursor-pointer ${
                   companion === c && !isCustom
                     ? 'bg-[#FF5A28] text-white border-[#FF5A28]'
                     : 'border-gray-300 text-gray-500 hover:border-gray-400'
@@ -146,7 +145,7 @@ export default function CookLogPage({ params }: Props) {
                   setIsCustom(true);
                   setCompanion('');
                 }}
-                className="px-4 py-2 rounded-full text-sm font-semibold border-2 border-dashed border-gray-300 text-gray-400 hover:border-gray-500"
+                className="px-4 py-2 rounded-full text-sm font-semibold border-2 border-dashed border-gray-300 text-gray-400 hover:border-gray-500 cursor-pointer"
               >
                 + 직접 입력
               </button>
@@ -154,13 +153,21 @@ export default function CookLogPage({ params }: Props) {
           </div>
 
           {/* 저장 버튼 */}
-          <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="w-full h-14 bg-[#3C2D23] text-white font-bold text-lg rounded-2xl hover:bg-[#2e221a] transition-colors disabled:opacity-60"
-          >
-            {isSaving ? '저장 중...' : '성장 데이터로 저장하기'}
-          </button>
+          <div className="flex flex-col gap-3">
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="w-full h-14 bg-[#3C2D23] text-white font-bold text-lg rounded-2xl hover:bg-[#2e221a] transition-colors disabled:opacity-60 cursor-pointer"
+            >
+              {isSaving ? '저장 중...' : '성장 데이터로 저장하기'}
+            </button>
+            <button
+              onClick={handleSkip}
+              className="w-full text-gray-400 text-sm font-medium hover:text-gray-600 underline underline-offset-4 py-2 cursor-pointer"
+            >
+              기록 건너뛰기
+            </button>
+          </div>
         </div>
       </div>
     </div>

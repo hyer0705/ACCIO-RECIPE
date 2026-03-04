@@ -118,10 +118,7 @@ export default function TimerPanel({ timers, onToggle, onReset }: TimerPanelProp
 
         {/* Rest of timers */}
         {rest.map((timer) => (
-          <div
-            key={timer.stepOrder}
-            className="rounded-2xl bg-white/[0.04] border border-white/10 p-4"
-          >
+          <div key={timer.stepOrder} className="rounded-2xl bg-white/4 border border-white/10 p-4">
             <div className="flex items-center gap-2 mb-2">
               <span className="text-[10px] font-bold text-[#FF5A28] bg-[#FF5A28]/20 border border-[#FF5A28]/30 px-2.5 py-0.5 rounded-full">
                 STEP {timer.stepOrder}
@@ -159,7 +156,7 @@ export default function TimerPanel({ timers, onToggle, onReset }: TimerPanelProp
       </div>
 
       {/* Bottom fade hint */}
-      <div className="shrink-0 h-6 bg-gradient-to-t from-[#2A1F18] to-transparent pointer-events-none -mt-6 relative z-10" />
+      <div className="shrink-0 h-6 bg-linear-to-t from-[#2A1F18] to-transparent pointer-events-none -mt-6 relative z-10" />
     </div>
   );
 }
