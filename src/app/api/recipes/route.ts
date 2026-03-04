@@ -236,6 +236,7 @@ interface StepInput {
   instruction: string;
   timer_seconds?: number;
   step_image_url?: string;
+  step_ingredients?: string[];
 }
 
 export async function POST(req: Request) {
@@ -300,6 +301,66 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { success: false, message: '잘못된 입력 데이터입니다.', errors },
         { status: 400 },
+      );
+    }
+
+    const { recipe_id } = body;
+
+    if (recipe_id) {
+      // 1. 기존 PENDING(또는 이미 존재하는) 레시피 업데이트 (Upsert)
+      // 상태를 COMPLETED로 변경하고, 프론트엔드에서 수정한 재료/순서를 덮어씁니다.
+      const updatedRecipe = await prisma.$transaction(async (tx) => {
+        const recipe = await tx.recipes.update({
+          where: { recipe_id },
+          data: {
+            user_id: userId,
+            title: title.trim(),
+            servings: servings,
+            difficulty: difficulty || null,
+            source_url: source_url || null,
+            thumbnail_url: thumbnail_url || null,
+            status: 'COMPLETED',
+          },
+          select: { recipe_id: true, title: true },
+        });
+
+        // 기존 재료, 순서 일괄 삭제 후 재삽입
+        await tx.recipe_ingredients.deleteMany({ where: { recipe_id } });
+        if (ingredients.length > 0) {
+          await tx.recipe_ingredients.createMany({
+            data: ingredients.map((ing: IngredientInput) => ({
+              recipe_id,
+              name: ing.name.trim(),
+              amount: ing.amount !== undefined ? ing.amount : null,
+              unit: ing.unit ? ing.unit.trim() : null,
+            })),
+          });
+        }
+
+        await tx.recipe_steps.deleteMany({ where: { recipe_id } });
+        if (steps.length > 0) {
+          await tx.recipe_steps.createMany({
+            data: steps.map((step: StepInput) => ({
+              recipe_id,
+              step_order: step.step_order,
+              instruction: step.instruction.trim(),
+              timer_seconds: step.timer_seconds || 0,
+              step_image_url: step.step_image_url || null,
+              step_ingredients: step.step_ingredients ?? [],
+            })),
+          });
+        }
+
+        return recipe;
+      });
+
+      return NextResponse.json(
+        {
+          success: true,
+          message: '레시피가 성공적으로 업데이트 되었습니다.',
+          data: updatedRecipe,
+        },
+        { status: 200 },
       );
     }
 

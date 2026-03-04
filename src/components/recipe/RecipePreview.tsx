@@ -10,13 +10,13 @@ interface RecipePreviewProps {
 }
 
 export default function RecipePreview({ data }: RecipePreviewProps) {
-  const { mutate: saveRecipe, isPending: isSaving } = useSaveRecipe();
-
   // 상태: 사용자가 조절할 수 있는 인원 수
   const [currentServings, setCurrentServings] = useState(data.servings || 1);
   const [isEditing, setIsEditing] = useState(false);
   const [editedIngredients, setEditedIngredients] = useState(data.ingredients);
   const [editedSteps, setEditedSteps] = useState(data.steps);
+
+  const { mutate: saveRecipe, isPending: isSaving } = useSaveRecipe(currentServings);
 
   const incrementServings = () => setCurrentServings((prev) => prev + 1);
   const decrementServings = () => setCurrentServings((prev) => (prev > 1 ? prev - 1 : 1));
@@ -38,26 +38,23 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
     return parseFloat(calculated.toFixed(1));
   };
 
-  // DB 저장용 수치 연산 (숫자 타입 강제)
-  const calculateSaveAmount = (amount: number | null): number | null => {
-    if (amount === null) return null;
-    const ratio = currentServings / (data.servings || 1);
-    return parseFloat((amount * ratio).toFixed(1));
-  };
-
   const handleStartCooking = () => {
-    // 저장 전 인원수에 맞게 재료량 수정
-    const finalDataToSave: ExtractedRecipeData = {
-      ...data,
-      servings: currentServings,
-      ingredients: editedIngredients.map((ing) => ({
-        ...ing,
-        amount: calculateSaveAmount(ing.amount),
-      })),
+    // 사용자가 '레시피 직접 수정'을 통해 원본 값을 고쳤을 수 있으므로 editedIngredients/Steps 저장
+    // 단, 여기서 amount는 '인원수 변경 전의 원본(1배수) 값'이어야 함.
+    // 화면에 보여줄 때만 배수로 보여주고 DB원본은 바꾸지 말아야 하기 때문.
+    const minimalDataToSave: Partial<ExtractedRecipeData> = {
+      recipe_id: data.recipe_id,
+      title: data.title,
+      // 백엔드가 덮어쓰도록 수정된 재료/순서 전달 (단, 수량은 원래 배수)
+      servings: data.servings,
+      ingredients: editedIngredients,
       steps: editedSteps,
+      difficulty: data.difficulty,
+      source_url: data.source_url,
+      thumbnail_url: data.thumbnail_url,
     };
 
-    saveRecipe(finalDataToSave);
+    saveRecipe({ ...minimalDataToSave } as ExtractedRecipeData);
   };
 
   return (
