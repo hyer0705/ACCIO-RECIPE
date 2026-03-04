@@ -150,7 +150,7 @@ export default function MyArchivePage() {
                   <div className="w-[220px] shrink-0 flex justify-end">
                     {log.recipe_id && (
                       <Link
-                        href={`/cooking/${log.recipe_id}`}
+                        href={`/recipes/${log.recipe_id}/cook`}
                         className="inline-flex items-center justify-center w-full bg-[#FF5A28] text-white py-3.5 rounded-full font-bold text-[15px] hover:bg-[#E04D20] transition-colors"
                       >
                         다시 조리하기
