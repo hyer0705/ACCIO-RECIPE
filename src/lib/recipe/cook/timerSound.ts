@@ -18,7 +18,8 @@ export function playTimerCompletionSound() {
       osc.start(ctx.currentTime + i * 0.18);
       osc.stop(ctx.currentTime + i * 0.18 + 0.5);
     });
-  } catch {
-    // AudioContext 미지원 환경 무시
+  } catch (error) {
+    // AudioContext 미지원 환경 또는 재생 실패 시 무시하되 로그는 남김
+    console.warn('Web Audio API를 통한 알림음 재생에 실패했습니다:', error);
   }
 }
