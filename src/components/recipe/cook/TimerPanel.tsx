@@ -1,8 +1,10 @@
 'use client';
 
-import { memo } from 'react';
+import { memo, useMemo } from 'react';
 
 import { ActiveTimer } from '@/types/timer';
+import { formatTime } from '@/lib/recipe/cook/timerUtils';
+import MiniCircle from '@/components/recipe/cook/MiniCircle';
 
 interface TimerPanelProps {
   timers: ActiveTimer[];
@@ -10,51 +12,16 @@ interface TimerPanelProps {
   onReset: (stepOrder: number) => void;
 }
 
-function formatTime(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
-}
-
-function MiniCircle({ timeLeft, initialSeconds }: { timeLeft: number; initialSeconds: number }) {
-  const r = 28;
-  const stroke = 6;
-  const circumference = 2 * Math.PI * r;
-  const progress = initialSeconds > 0 ? timeLeft / initialSeconds : 0;
-  const dashOffset = circumference * (1 - progress);
-
-  return (
-    <svg width={r * 2 + stroke} height={r * 2 + stroke} className="-rotate-90">
-      <circle
-        cx={r + stroke / 2}
-        cy={r + stroke / 2}
-        r={r}
-        fill="none"
-        stroke="#5B4A40"
-        strokeWidth={stroke}
-      />
-      <circle
-        cx={r + stroke / 2}
-        cy={r + stroke / 2}
-        r={r}
-        fill="none"
-        stroke="#FF5A28"
-        strokeWidth={stroke}
-        strokeLinecap="round"
-        strokeDasharray={circumference}
-        strokeDashoffset={dashOffset}
-        style={{ transition: 'stroke-dashoffset 1s linear' }}
-      />
-    </svg>
-  );
-}
-
 function TimerPanel({ timers, onToggle, onReset }: TimerPanelProps) {
+  // useMemo를 사용하여 timers 배열이 변경될 때만 정렬을 수행하도록 최적화합니다.
+  // Hook은 조건문(Early Return)보다 항상 위에 있어야 합니다.
+  const sortedTimers = useMemo(() => {
+    return [...timers].sort((a, b) => a.timeLeft - b.timeLeft);
+  }, [timers]);
+
   if (timers.length === 0) return null;
 
-  // timeLeft 오름차순 정렬 (가장 먼저 끝나는 것이 맨 위)
-  const sorted = [...timers].sort((a, b) => a.timeLeft - b.timeLeft);
-  const [urgent, ...rest] = sorted;
+  const [urgent, ...rest] = sortedTimers;
 
   return (
     <div className="flex flex-col h-full bg-[#2A1F18] rounded-3xl overflow-hidden">
