@@ -1,31 +1,12 @@
 'use client';
 
+import { useEffect } from 'react';
+import { playTimerCompletionSound } from '@/lib/recipe/cook/timerSound';
+
 interface TimerCompleteModalProps {
   stepOrder: number;
   instruction: string;
   onConfirm: () => void;
-}
-
-// Web Audio API로 알림음 재생 (외부 라이브러리 없음)
-function playChime() {
-  try {
-    const ctx = new AudioContext();
-    const notes = [880, 1100, 1320]; // A5 → C#6 → E6 상행 화음
-    notes.forEach((freq, i) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.frequency.value = freq;
-      osc.type = 'sine';
-      gain.gain.setValueAtTime(0.35, ctx.currentTime + i * 0.18);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + i * 0.18 + 0.5);
-      osc.start(ctx.currentTime + i * 0.18);
-      osc.stop(ctx.currentTime + i * 0.18 + 0.5);
-    });
-  } catch {
-    // AudioContext 미지원 환경 무시
-  }
 }
 
 export default function TimerCompleteModal({
@@ -33,12 +14,10 @@ export default function TimerCompleteModal({
   instruction,
   onConfirm,
 }: TimerCompleteModalProps) {
-  // 모달이 마운트될 때 소리 재생
-  // (useEffect 대신 렌더 외부에서 한 번만 실행)
-  if (typeof window !== 'undefined') {
-    // setTimeout 0으로 마운트 직후 실행 (상태 업데이트 사이클 이후)
-    setTimeout(playChime, 0);
-  }
+  // 컴포넌트 마운트 완료 후(Commit 단계) 한 번만 소리 재생
+  useEffect(() => {
+    playTimerCompletionSound();
+  }, []);
 
   return (
     // Backdrop

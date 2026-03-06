@@ -2,13 +2,14 @@
 
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import TimerPanel from '@/components/recipe/cook/TimerPanel';
-import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
 import { useWakeLock } from '@/hooks/recipe/cook/useWakeLock';
 import { useTimers } from '@/hooks/recipe/cook/useTimers';
 
-import { CookingStep, RecipeIngredient } from '@/types/recipe';
+import TimerPanel from '@/components/recipe/cook/TimerPanel';
+import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
 import StepIngredientChips from '@/components/recipe/cook/StepIngredientChips';
+
+import { CookingStep, RecipeIngredient } from '@/types/recipe';
 
 interface CookingStepViewerClientProps {
   recipeId: number;
