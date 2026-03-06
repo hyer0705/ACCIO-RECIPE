@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Minus, Plus, Edit2, Check } from 'lucide-react';
 import { ExtractedRecipeData } from '@/store/useRecipeStore';
 import { useSaveRecipe } from '@/hooks/useSaveRecipe';
+import { calculateDisplayAmount } from '@/lib/recipe/utils';
 
 interface RecipePreviewProps {
   data: ExtractedRecipeData;
@@ -20,23 +21,6 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
 
   const incrementServings = () => setCurrentServings((prev) => prev + 1);
   const decrementServings = () => setCurrentServings((prev) => (prev > 1 ? prev - 1 : 1));
-
-  // 인원 수 변경에 따른 재료량 재계산 (화면 표시 및 소수 변환용)
-  const calculateDisplayAmount = (amount: number | null): string | number => {
-    if (amount === null) return '';
-    const ratio = currentServings / (data.servings || 1);
-    const calculated = amount * ratio;
-
-    if (calculated === 0) return 0;
-
-    const integerPart = Math.floor(calculated);
-    const fractionalPart = calculated - integerPart;
-
-    if (fractionalPart < 0.01) return integerPart; // 딱 떨어지는 정수
-
-    // 소수점 1자리로 보여줌
-    return parseFloat(calculated.toFixed(1));
-  };
 
   const handleStartCooking = () => {
     // ── 재료 수정 내용을 조리 단계 재료(step_ingredients)에 동기화 ──
@@ -162,7 +146,7 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
                     <>
                       <span className="font-semibold text-[#3C2D23]">{ingredient.name}</span>
                       <span className="font-bold text-[#FF5A28]">
-                        {calculateDisplayAmount(ingredient.amount)}
+                        {calculateDisplayAmount(ingredient.amount, currentServings, data.servings)}
                         <span className="text-sm ml-1">{ingredient.unit}</span>
                       </span>
                     </>
