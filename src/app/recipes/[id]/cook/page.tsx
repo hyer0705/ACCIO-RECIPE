@@ -1,24 +1,16 @@
 import { notFound } from 'next/navigation';
-import prisma from '@/lib/prisma';
+import { getRecipeForCooking } from '@/services/recipeService';
 import CookingStepViewerClient from '@/components/recipe/cook/CookingStepViewerClient';
 
 export default async function CookPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const recipeId = parseInt(id, 10);
+  const recipeId = Number(id);
 
-  if (isNaN(recipeId)) {
+  if (Number.isNaN(recipeId)) {
     notFound();
   }
 
-  const recipe = await prisma.recipes.findUnique({
-    where: { recipe_id: recipeId },
-    include: {
-      recipe_steps: {
-        orderBy: { step_order: 'asc' },
-      },
-      recipe_ingredients: true,
-    },
-  });
+  const recipe = await getRecipeForCooking(recipeId);
 
   if (!recipe) {
     notFound();
