@@ -3,8 +3,8 @@ import prisma from '@/lib/prisma';
 import CookingStepViewerClient from '@/components/recipe/cook/CookingStepViewerClient';
 
 export default async function CookPage({ params }: { params: Promise<{ id: string }> }) {
-  const resolvedParams = await params;
-  const recipeId = parseInt(resolvedParams.id, 10);
+  const { id } = await params;
+  const recipeId = parseInt(id, 10);
 
   if (isNaN(recipeId)) {
     notFound();
