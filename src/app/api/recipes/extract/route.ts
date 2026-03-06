@@ -246,16 +246,16 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, label = 'API'): P
 // ── 공통 프롬프트 ──────────────────────────────────────────────────────────────
 const SYSTEM_PROMPT = `너는 최고의 요리 전문가이자 레시피 구조화 AI야. 주어진 동영상이나 텍스트를 보고 오직 '요리 레시피'와 관련된 필수 정보(제목, 난이도, 몇인분, 재료, 스텝)만 정확하게 추출해야 해.
 
-**[핵심 규칙 1: 조리 순서 텍스트에 계량 수치 금지]**
-조리 순서(instruction) 텍스트 안에 절대 구체적인 계량 수치(예: 370g, 200ml, 1큰술 등의 숫자+단위)를 적지 마라. 계량 수치는 오직 ingredients 목록에서만 표현된다.
+**[핵심 규칙 1: 조리 순서 텍스트 안에는 재료의 계량 수치(무게/부피) 금지, 단 시간과 온도는 무조건 보존]**
+조리 순서(instruction) 텍스트 안에 절대 구체적인 재료 무게/부피 계량 수치(예: 370g, 200ml, 1큰술 등의 숫자+단위)를 적지 마라.
 - BAD 예시: "크림치즈 370g을 볼에 넣고 부드럽게 풀어준다."
 - GOOD 예시: "계량한 크림치즈를 볼에 넣고 부드럽게 풀어준다."
-- BAD 예시: "소금 1큰술을 넣고 간을 맞춰라."
-- GOOD 예시: "소금을 넣고 간을 맞춰라."
+하지만 조리에 필요한 "시간(분, 시간, 초)"이나 "온도(도)"와 관련된 안내(예: "220도로 22분동안 구워주세요", "15분간 불려주세요")는 절대로 삭제하지 말고 원본 텍스트 그대로 보존해라.
 
-**[핵심 규칙 2: 각 조리 단계별 사용되는 재료 이름 배열(step_ingredients) 추출]**
-각 조리 단계(step)마다 해당 단계에서 실제로 투입되거나 사용되는 재료들의 '이름'만 배열로 명시해라. 이름은 반드시 ingredients 목록에 존재하는 name 값과 동일하게 맞추어라.
-- 예시: "크림치즈와 설탕을 섞는" 단계라면 step_ingredients: ["크림치즈", "설탕"]
+**[핵심 규칙 2: 각 조리 단계별 사용되는 재료 안내(step_ingredients) 추출]**
+각 조리 단계(step)마다 해당 단계에서 실제로 투입되거나 사용되는 재료들의 상세 정보(이름, 양, 단위)를 객체 배열 형식으로 명시해라.
+이름은 반드시 전체 ingredients 목록에 존재하는 name 값과 동일해야 한다.
+- 예시: "크림치즈와 설탕을 섞는" 단계라면 step_ingredients: [{"name": "크림치즈", "amount": 400, "unit": "g"}, {"name": "설탕", "amount": 100, "unit": "g"}]
 
 **[핵심 규칙 3: 재료 계량 정확도]**
 재료의 계량(숫자, 단위)은 영상의 음성이나 자막에서 언급된 텍스트를 100% 최우선으로 따르며, 임의로 수치를 추정하거나 변경하지 마라.
@@ -292,7 +292,7 @@ const GEMINI_SCHEMA = {
           instruction: {
             type: Type.STRING,
             description:
-              '조리 지시사항. 계량 수치(숫자+단위)는 절대 포함하지 마라. 재료 이름만 자연스럽게 언급한다.',
+              '조리 지시사항. 재료의 무게/부피 계량 수치(예: 300g, 1큰술)는 명시하지 마라. 단, 조리 시간(N분)이나 온도(N도) 관련 텍스트는 무조건 보존할 것.',
           },
           timer_seconds: {
             type: Type.INTEGER,
@@ -301,8 +301,15 @@ const GEMINI_SCHEMA = {
           step_ingredients: {
             type: Type.ARRAY,
             description:
-              '이 단계에서 사용되는 재료 이름 배열. ingredients 목록의 name과 정확히 일치해야 함.',
-            items: { type: Type.STRING },
+              '이 단계에서 사용되는 재료들의 상세 정보 객체 배열. 이름(name)은 ingredients 목록의 name과 정확히 일치해야 함.',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                name: { type: Type.STRING, description: '재료 이름' },
+                amount: { type: Type.NUMBER, description: '재료 양', nullable: true },
+                unit: { type: Type.STRING, description: '재료 단위', nullable: true },
+              },
+            },
           },
         },
       },
@@ -317,7 +324,7 @@ async function callGemini(
 ): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
   const response = await ai.models.generateContent({
-    model: 'gemini-3-flash-preview',
+    model: 'gemini-3.1-flash-lite-preview',
     contents: [...contents, '위 컨텐츠를 바탕으로 요리 레시피를 정리해서 JSON으로 추출해줘.'],
     config: {
       systemInstruction: SYSTEM_PROMPT,
@@ -360,10 +367,10 @@ async function callOpenAI(
         role: 'user',
         content: `다음 텍스트에서 레시피 정보를 추출해줘.
 중요 규칙:
-1. instruction(조리 순서) 텍스트 안에 절대 "370g", "1큰술" 같은 계량 수치를 넣지 마라. (BAD: "크림치즈 370g 넣기" → GOOD: "크림치즈 넣기")
-2. 각 step마다 step_ingredients 배열에 이 단계에서 실제로 투입되는 재료 이름들을 명시해라. 이름은 ingredients의 name과 동일하게.
+1. instruction(조리 순서) 텍스트 안에 재료 무게나 부피(예:"370g", "1큰술")는 빼고 적어. 단, 시간이나 온도(예:"22분간 구워주세요", "15분 불리기")는 절대 빼지 말고 그대로 적어라.
+2. 각 step마다 step_ingredients 객체 배열에 이 단계에서 실제로 투입되는 재료 정보(이름, 양, 단위)를 명시해라. 이름은 ingredients의 name과 동일하게. (예: [{"name":"크림치즈", "amount":400, "unit":"g"}])
 dиfficulty는 반드시 "Easy", "Medium", "Hard" 셋 중 하나의 영어로만 반환해.
-형식: {"title":..., "difficulty":"Easy|Medium|Hard", "servings":..., "ingredients":[{"name":..., "amount":..., "unit":...}], "steps":[{"step_order":..., "instruction":..., "timer_seconds":..., "step_ingredients":[...]}]}
+형식: {"title":..., "difficulty":"Easy|Medium|Hard", "servings":..., "ingredients":[{"name":..., "amount":..., "unit":...}], "steps":[{"step_order":..., "instruction":..., "timer_seconds":..., "step_ingredients":[{"name":..., "amount":..., "unit":...}]}]}
 
 ${textContent}`,
       },
@@ -484,13 +491,19 @@ async function processExtraction(
               step_order: number;
               instruction: string;
               timer_seconds?: number;
-              step_ingredients?: string[];
+              step_ingredients?: Array<{ name: string; amount?: unknown; unit?: string }>;
             }) => ({
               recipe_id: recipeId,
               step_order: step.step_order,
               instruction: step.instruction,
               timer_seconds: step.timer_seconds || 0,
-              step_ingredients: step.step_ingredients ?? [],
+              step_ingredients: step.step_ingredients
+                ? step.step_ingredients.map((ing) => ({
+                    name: ing.name,
+                    amount: normalizeAmount(ing.amount),
+                    unit: ing.unit || null,
+                  }))
+                : [],
             }),
           ),
         });

@@ -39,16 +39,41 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
   };
 
   const handleStartCooking = () => {
-    // 사용자가 '레시피 직접 수정'을 통해 원본 값을 고쳤을 수 있으므로 editedIngredients/Steps 저장
-    // 단, 여기서 amount는 '인원수 변경 전의 원본(1배수) 값'이어야 함.
-    // 화면에 보여줄 때만 배수로 보여주고 DB원본은 바꾸지 말아야 하기 때문.
+    // ── 재료 수정 내용을 조리 단계 재료(step_ingredients)에 동기화 ──
+    const syncedSteps = editedSteps.map((step) => {
+      if (!step.step_ingredients || !Array.isArray(step.step_ingredients)) return step;
+
+      const newStepIngredients = step.step_ingredients.map((stepIng) => {
+        // 원본 data.ingredients 이름을 기준으로 원래 인덱스를 찾습니다.
+        // LLM이 처음 만들어준 stepIng.name과 가장 일치하는 원본 재료를 매핑합니다.
+        const matchIdx = data.ingredients.findIndex((origIng) => origIng.name === stepIng.name);
+
+        if (matchIdx !== -1) {
+          // 일치하는 원본 인덱스를 찾았으면 사용자가 방금 수정한 editedIngredients 값으로 교체합니다.
+          const editedIng = editedIngredients[matchIdx];
+          return {
+            ...stepIng,
+            name: editedIng.name,
+            amount: editedIng.amount,
+            unit: editedIng.unit,
+          };
+        }
+        return stepIng;
+      });
+
+      return {
+        ...step,
+        step_ingredients: newStepIngredients,
+      };
+    });
+
     const minimalDataToSave: Partial<ExtractedRecipeData> = {
       recipe_id: data.recipe_id,
       title: data.title,
       // 백엔드가 덮어쓰도록 수정된 재료/순서 전달 (단, 수량은 원래 배수)
       servings: data.servings,
       ingredients: editedIngredients,
-      steps: editedSteps,
+      steps: syncedSteps,
       difficulty: data.difficulty,
       source_url: data.source_url,
       thumbnail_url: data.thumbnail_url,

@@ -85,7 +85,7 @@ export default function CookingStepViewerClient({
 
           {/* 이 단계에서 필요한 재료 칩 */}
           <div className="mt-4">
-            <StepIngredientChips step={currentStep} allIngredients={ingredients} />
+            <StepIngredientChips step={currentStep} />
           </div>
 
           {/* 현재 단계에 타이머가 있고 아직 시작 안 했을 경우 시작 버튼 표시 */}
