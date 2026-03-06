@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import prisma from '@/lib/prisma';
-import CookingStepViewerClient from './CookingStepViewerClient';
+import CookingStepViewerClient from '@/components/recipe/cook/CookingStepViewerClient';
 
 export default async function CookPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = await params;
