@@ -17,11 +17,6 @@ export default async function CookPage({ params }: { params: Promise<{ id: strin
     notFound();
   }
 
-  const serializedIngredients = recipe.recipe_ingredients.map((ing) => ({
-    ...ing,
-    amount: ing.amount !== null ? ing.amount.toNumber() : null,
-  }));
-
   const serializedSteps = recipe.recipe_steps.map((step) => ({
     ...step,
     step_ingredients: step.step_ingredients as unknown as StepIngredientInfo[],
@@ -29,11 +24,7 @@ export default async function CookPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="fixed inset-0 bg-[#3C2D23] z-50 flex flex-col items-center justify-center overflow-auto">
-      <CookingStepViewerClient
-        recipeId={recipe.recipe_id}
-        steps={serializedSteps}
-        ingredients={serializedIngredients}
-      />
+      <CookingStepViewerClient recipeId={recipe.recipe_id} steps={serializedSteps} />
     </div>
   );
 }
