@@ -37,12 +37,11 @@ export default function Header() {
           나의 요리 서재
         </Link>
 
-        {/* 프로필 이미지 아이콘 및 드롭다운 (현재는 클릭시 로그아웃) */}
         {session ? (
-          <button
-            onClick={() => signOut({ callbackUrl: '/login' })}
+          <Link
+            href="/my/dashboard"
             className="w-8 h-8 rounded-full bg-[#3C2D23] flex items-center justify-center text-white overflow-hidden hover:opacity-80 transition-opacity"
-            title="로그아웃"
+            title="마이페이지"
           >
             {session.user?.image ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -50,7 +49,7 @@ export default function Header() {
             ) : (
               <UserCircle size={20} />
             )}
-          </button>
+          </Link>
         ) : (
           <Link
             href="/login"
