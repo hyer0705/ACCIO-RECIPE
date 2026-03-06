@@ -35,7 +35,7 @@ export default function TimerCompleteModal({
         <div className="border-t border-white/10 mb-5" />
 
         {/* Body */}
-        <p className="text-xs text-white/40 text-center mb-2">지금 해야 할 일:</p>
+        <p className="text-xs text-white/40 text-center mb-2">마무리 된 조리:</p>
         <p className="text-center text-white/90 font-semibold text-base leading-relaxed mb-6">
           &ldquo;{instruction}&rdquo;
         </p>

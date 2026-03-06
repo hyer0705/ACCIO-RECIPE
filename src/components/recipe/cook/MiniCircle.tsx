@@ -1,11 +1,17 @@
 interface MiniCircleProps {
   timeLeft: number;
   initialSeconds: number;
+  color?: string;
 }
 
-export default function MiniCircle({ timeLeft, initialSeconds }: MiniCircleProps) {
-  const r = 28;
-  const stroke = 6;
+export default function MiniCircle({
+  timeLeft,
+  initialSeconds,
+  color = '#FF5A28',
+}: MiniCircleProps) {
+  // SVG 크기가 40x40이 되도록 설정 (r * 2 + stroke = 36 + 4 = 40)
+  const r = 18;
+  const stroke = 4;
   const circumference = 2 * Math.PI * r;
   const progress = initialSeconds > 0 ? timeLeft / initialSeconds : 0;
   const dashOffset = circumference * (1 - progress);
@@ -25,7 +31,7 @@ export default function MiniCircle({ timeLeft, initialSeconds }: MiniCircleProps
         cy={r + stroke / 2}
         r={r}
         fill="none"
-        stroke="#FF5A28"
+        stroke={color}
         strokeWidth={stroke}
         strokeLinecap="round"
         strokeDasharray={circumference}
