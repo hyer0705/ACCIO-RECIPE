@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useSession, signOut } from 'next-auth/react';
+import { useSession } from 'next-auth/react';
 import { UserCircle } from 'lucide-react'; // 아이콘 라이브러리 (필요시 교체)
 
 export default function Header() {

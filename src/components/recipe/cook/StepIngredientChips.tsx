@@ -1,4 +1,4 @@
-import { CookingStep, RecipeIngredient } from '@/types/recipe';
+import { CookingStep } from '@/types/recipe';
 
 interface StepIngredientChipsProps {
   step: CookingStep;

@@ -9,19 +9,14 @@ import TimerPanel from '@/components/recipe/cook/TimerPanel';
 import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
 import StepIngredientChips from '@/components/recipe/cook/StepIngredientChips';
 
-import { CookingStep, RecipeIngredient } from '@/types/recipe';
+import { CookingStep } from '@/types/recipe';
 
 interface CookingStepViewerClientProps {
   recipeId: number;
   steps: CookingStep[];
-  ingredients?: RecipeIngredient[];
 }
 
-export default function CookingStepViewerClient({
-  recipeId,
-  steps,
-  ingredients = [],
-}: CookingStepViewerClientProps) {
+export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
