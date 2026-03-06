@@ -16,7 +16,6 @@ export default async function CookPage({ params }: { params: Promise<{ id: strin
     notFound();
   }
 
-  // Prisma의 Decimal 타입은 Server → Client 직렬화가 안 되므로 number | null로 변환
   const serializedIngredients = recipe.recipe_ingredients.map((ing) => ({
     ...ing,
     amount: ing.amount !== null ? ing.amount.toNumber() : null,
