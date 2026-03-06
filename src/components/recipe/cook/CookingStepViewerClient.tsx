@@ -1,20 +1,21 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import TimerPanel, { ActiveTimer } from '@/components/recipe/cook/TimerPanel';
+import TimerPanel from '@/components/recipe/cook/TimerPanel';
 import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
+import { useWakeLock } from '@/hooks/recipe/cook/useWakeLock';
+import { useTimers } from '@/hooks/recipe/cook/useTimers';
 
 import { CookingStep, RecipeIngredient } from '@/types/recipe';
 import StepIngredientChips from '@/components/recipe/cook/StepIngredientChips';
 
-export interface CookingStepViewerClientProps {
+interface CookingStepViewerClientProps {
   recipeId: number;
   steps: CookingStep[];
   ingredients?: RecipeIngredient[];
 }
 
-// ── 메인 컴포넌트 ────────────────────────────────────────────────────────────
 export default function CookingStepViewerClient({
   recipeId,
   steps,
@@ -22,64 +23,10 @@ export default function CookingStepViewerClient({
 }: CookingStepViewerClientProps) {
   const router = useRouter();
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
+    useTimers();
 
-  // ── 다중 타이머 상태 ──────────────────────────────────────────
-  const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
-
-  // 완료 모달: 어느 타이머가 완료됐는지 보관
-  const [completedTimer, setCompletedTimer] = useState<ActiveTimer | null>(null);
-
-  // Wake Lock ref (cleanup용)
-  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
-
-  // ── Screen Wake Lock ────────────────────────────────────────
-  useEffect(() => {
-    async function requestWakeLock() {
-      try {
-        if ('wakeLock' in navigator) {
-          wakeLockRef.current = await navigator.wakeLock.request('screen');
-        }
-      } catch {
-        // Wake Lock 권한 거부 또는 미지원 → 무시
-      }
-    }
-    requestWakeLock();
-
-    return () => {
-      wakeLockRef.current?.release();
-    };
-  }, []);
-
-  // ── 타이머 틱 (1초마다 모든 실행 중인 타이머 감소) ─────────────
-  useEffect(() => {
-    if (activeTimers.length === 0) return undefined;
-
-    const interval = setInterval(() => {
-      setActiveTimers((prev) => {
-        let justCompleted: ActiveTimer | null = null;
-
-        const updated = prev.map((t) => {
-          if (!t.isRunning || t.timeLeft <= 0) return t;
-
-          const next = t.timeLeft - 1;
-          if (next === 0) {
-            // 완료된 타이머를 별도 변수에 캡처
-            justCompleted = { ...t, timeLeft: 0, isRunning: false };
-            return justCompleted;
-          }
-          return { ...t, timeLeft: next };
-        });
-
-        if (justCompleted) {
-          // 다음 렌더 사이클에서 모달 표시 (setState in callback → 허용)
-          setTimeout(() => setCompletedTimer(justCompleted), 0);
-        }
-        return updated;
-      });
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, [activeTimers]);
+  const { releaseWakeLock } = useWakeLock();
 
   // ── 현재 단계에 타이머가 있으면 타이머 목록에 추가 ────────────
   const currentStep = steps[currentStepIndex];
@@ -88,46 +35,10 @@ export default function CookingStepViewerClient({
 
   const handleStartTimer = useCallback(() => {
     const seconds = currentStep.timer_seconds;
-    if (!seconds || seconds <= 0) return;
-
-    setActiveTimers((prev) => {
-      const exists = prev.find((t) => t.stepOrder === currentStep.step_order);
-      if (exists) return prev; // 이미 등록된 타이머 중복 방지
-
-      return [
-        ...prev,
-        {
-          stepOrder: currentStep.step_order,
-          instruction: currentStep.instruction,
-          initialSeconds: seconds,
-          timeLeft: seconds,
-          isRunning: true,
-        },
-      ];
-    });
-  }, [currentStep]);
-
-  const handleToggleTimer = useCallback((stepOrder: number) => {
-    setActiveTimers((prev) =>
-      prev.map((t) => (t.stepOrder === stepOrder ? { ...t, isRunning: !t.isRunning } : t)),
-    );
-  }, []);
-
-  const handleResetTimer = useCallback((stepOrder: number) => {
-    setActiveTimers((prev) =>
-      prev.map((t) =>
-        t.stepOrder === stepOrder ? { ...t, timeLeft: t.initialSeconds, isRunning: false } : t,
-      ),
-    );
-  }, []);
-
-  const handleDismissModal = useCallback(() => {
-    // 완료된 타이머를 목록에서 제거
-    if (completedTimer) {
-      setActiveTimers((prev) => prev.filter((t) => t.stepOrder !== completedTimer.stepOrder));
+    if (seconds && seconds > 0) {
+      startTimer(currentStep.step_order, currentStep.instruction, seconds);
     }
-    setCompletedTimer(null);
-  }, [completedTimer]);
+  }, [currentStep, startTimer]);
 
   const nextStep = () => {
     if (!isLastStep) setCurrentStepIndex((prev) => prev + 1);
@@ -138,7 +49,7 @@ export default function CookingStepViewerClient({
   };
 
   const handleFinish = () => {
-    wakeLockRef.current?.release();
+    releaseWakeLock();
     router.push(`/recipes/${recipeId}/cook/log`);
   };
 
@@ -192,11 +103,7 @@ export default function CookingStepViewerClient({
         {/* Timer Panel (right, fixed width, internal scroll) */}
         {activeTimers.length > 0 && (
           <div className="w-80 shrink-0">
-            <TimerPanel
-              timers={activeTimers}
-              onToggle={handleToggleTimer}
-              onReset={handleResetTimer}
-            />
+            <TimerPanel timers={activeTimers} onToggle={toggleTimer} onReset={resetTimer} />
           </div>
         )}
       </main>
@@ -227,7 +134,7 @@ export default function CookingStepViewerClient({
         <TimerCompleteModal
           stepOrder={completedTimer.stepOrder}
           instruction={completedTimer.instruction}
-          onConfirm={handleDismissModal}
+          onConfirm={dismissModal}
         />
       )}
     </div>

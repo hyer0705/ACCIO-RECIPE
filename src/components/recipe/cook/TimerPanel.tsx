@@ -1,12 +1,8 @@
 'use client';
 
-export interface ActiveTimer {
-  stepOrder: number;
-  instruction: string;
-  initialSeconds: number;
-  timeLeft: number;
-  isRunning: boolean;
-}
+import { memo } from 'react';
+
+import { ActiveTimer } from '@/types/timer';
 
 interface TimerPanelProps {
   timers: ActiveTimer[];
@@ -53,7 +49,7 @@ function MiniCircle({ timeLeft, initialSeconds }: { timeLeft: number; initialSec
   );
 }
 
-export default function TimerPanel({ timers, onToggle, onReset }: TimerPanelProps) {
+function TimerPanel({ timers, onToggle, onReset }: TimerPanelProps) {
   if (timers.length === 0) return null;
 
   // timeLeft 오름차순 정렬 (가장 먼저 끝나는 것이 맨 위)
@@ -155,8 +151,9 @@ export default function TimerPanel({ timers, onToggle, onReset }: TimerPanelProp
         ))}
       </div>
 
-      {/* Bottom fade hint */}
       <div className="shrink-0 h-6 bg-linear-to-t from-[#2A1F18] to-transparent pointer-events-none -mt-6 relative z-10" />
     </div>
   );
 }
+
+export default memo(TimerPanel);
