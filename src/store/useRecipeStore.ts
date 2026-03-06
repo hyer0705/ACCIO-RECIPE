@@ -11,6 +11,7 @@ export interface ExtractionStep {
   step_order: number;
   instruction: string;
   timer_seconds: number;
+  step_ingredients?: Array<{ name: string; amount: number | null; unit: string | null }>;
 }
 
 export interface ExtractedRecipeData {

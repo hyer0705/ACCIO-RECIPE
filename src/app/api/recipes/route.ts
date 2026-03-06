@@ -236,7 +236,7 @@ interface StepInput {
   instruction: string;
   timer_seconds?: number;
   step_image_url?: string;
-  step_ingredients?: string[];
+  step_ingredients?: Array<{ name: string; amount?: number | null; unit?: string | null }>;
 }
 
 export async function POST(req: Request) {

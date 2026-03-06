@@ -75,7 +75,7 @@ model recipe_steps {
   instruction       String   @db.Text
   step_image_url    String?  @db.VarChar(255)
   timer_seconds     Int?     @default(0)
-  step_ingredients  Json?    // 해당 단계에 필요한 재료 이름 배열 (예: ["양파", "소금"])
+  step_ingredients  Json?    // 각 단계에서 사용되는 재료 상세 정보. 예: [{"name": "크림치즈", "amount": 400, "unit": "g"}]
   recipes           recipes? @relation(fields: [recipe_id], references: [recipe_id], onDelete: Cascade, onUpdate: NoAction, map: "recipe_steps_ibfk_1")
 
   @@index([recipe_id], map: "recipe_id")
