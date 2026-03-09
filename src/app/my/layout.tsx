@@ -9,7 +9,8 @@ export default function MyPageLayout({ children }: { children: React.ReactNode }
 
   const navItems = [
     { label: '대시보드', href: '/my/dashboard' },
-    { label: '최근 요리 기록', href: '/my/archive' },
+    { label: '레시피', href: '/my/recipes' },
+    { label: '요리 서재', href: '/my/archive' },
     { label: '냉장고 관리', href: '/my/fridge' },
     { label: '설정', href: '/my/settings' },
   ];

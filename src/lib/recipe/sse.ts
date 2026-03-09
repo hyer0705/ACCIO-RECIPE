@@ -4,6 +4,8 @@ export interface ExtractionProgressEvent {
   message: string;
   recipeId?: number;
   error?: string;
+  thumbnailUrl?: string | null;
+  title?: string;
 }
 
 export class SSEWriter {

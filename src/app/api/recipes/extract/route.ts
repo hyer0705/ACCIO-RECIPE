@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { load } from 'cheerio';
 import prisma from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/authOptions';
 import { processExtraction } from '@/lib/recipe/extractHelpers';
 import { SSEWriter } from '@/lib/recipe/sse';
 
@@ -113,6 +115,13 @@ export async function POST(req: Request) {
     );
   }
 
+  // 세션 확인 (유저 ID 할당을 위함)
+  const session = await getServerSession(authOptions);
+  if (!session || !session.user || !('id' in session.user)) {
+    return NextResponse.json({ success: false, error: '인증이 필요합니다.' }, { status: 401 });
+  }
+  const userId = parseInt(session.user.id as string, 10);
+
   // SSE 스트림 생성
   const stream = new ReadableStream({
     async start(controller) {
@@ -125,7 +134,12 @@ export async function POST(req: Request) {
         let thumbnailUrl: string | null = null;
         let fallbackTitle = '';
 
-        sse.write({ step: 1, total: 4, message: '원본 링크에서 정보를 추출하고 있어요 🌐' });
+        sse.write({
+          step: 1,
+          total: 4,
+          message: '원본 링크에서 정보를 추출하고 있어요 🌐',
+          thumbnailUrl: null, // 아직은 모름
+        });
 
         // 1. YouTube 영상 vs 일반 웹페이지 분기
         if (url.includes('youtube.com') || url.includes('youtu.be')) {
@@ -144,6 +158,13 @@ export async function POST(req: Request) {
           if (videoIdMatch && videoIdMatch[1]) {
             thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/maxresdefault.jpg`;
           }
+
+          sse.write({
+            step: 1,
+            total: 4,
+            message: '유튜브 영상 정보를 가져왔습니다 🎬',
+            thumbnailUrl: thumbnailUrl,
+          });
         } else {
           // 네이버 블로그는 모바일 버전으로 변환 (JS 렌더링 없이 본문 추출 가능)
           if (url.includes('blog.naver.com') && !url.includes('m.blog.naver.com')) {
@@ -210,6 +231,15 @@ export async function POST(req: Request) {
             contentsToAnalyze.push(
               `다음 텍스트에서 레시피 정보를 추출해서 제공해줘:\n\n${extractedText}`,
             );
+
+            // 크롤링으로 얻은 정보 즉시 전달
+            sse.write({
+              step: 1,
+              total: 4,
+              message: '정보 수집 완료! 이제 분석을 시작합니다 🔎',
+              title: fallbackTitle,
+              thumbnailUrl: thumbnailUrl,
+            });
           } catch (err: unknown) {
             console.error('웹페이지 스크래핑 실패:', err);
             sse.write({
@@ -226,6 +256,7 @@ export async function POST(req: Request) {
         // 2. 초기 PENDING 레시피 생성
         const newRecipe = await prisma.recipes.create({
           data: {
+            user_id: userId,
             title: fallbackTitle || '이름 모를 레시피',
             source_url: url,
             status: 'PENDING',

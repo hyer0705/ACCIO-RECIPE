@@ -104,62 +104,78 @@ export async function GET() {
     expiryThreshold.setDate(expiryThreshold.getDate() + 7);
 
     // ── 3. 병렬 쿼리 실행 ─────────────────────────────────────────────
-    const [thisMonthLogs, prevMonthCount, expiringRaw, latestLesson] = await Promise.all([
-      // 이번 달 전체 로그 (status 계산용)
-      prisma.cooking_logs.findMany({
-        where: {
-          user_id: userId,
-          cooked_at: { gte: thisMonthStart, lte: todayEnd },
-        },
-        select: { status: true },
-      }),
-
-      // 지난달 요리 횟수
-      prisma.cooking_logs.count({
-        where: {
-          user_id: userId,
-          cooked_at: { gte: prevMonthStart, lte: prevMonthEnd },
-        },
-      }),
-
-      // 유통기한 임박 재료 (오늘 ~ +7일)
-      prisma.fridge_items.findMany({
-        where: {
-          user_id: userId,
-          expiry_date: { lte: expiryThreshold },
-        },
-        select: {
-          item_id: true,
-          custom_name: true,
-          expiry_date: true,
-          ingredients_master: {
-            select: { name: true, icon_url: true },
-          },
-        },
-        orderBy: { expiry_date: 'asc' },
-      }),
-
-      // 가장 최근 회고 노트 (lesson_note가 있는 것만, 본인이 작성한 COMPLETED 레시피)
-      prisma.cooking_logs.findFirst({
-        where: {
-          user_id: userId,
-          lesson_note: { not: null },
-          recipes: {
+    const [thisMonthLogs, prevMonthCount, expiringRaw, latestLesson, recentRecipes] =
+      await Promise.all([
+        // 이번 달 전체 로그 (status 계산용)
+        prisma.cooking_logs.findMany({
+          where: {
             user_id: userId,
-            status: 'COMPLETED',
+            cooked_at: { gte: thisMonthStart, lte: todayEnd },
           },
-        },
-        select: {
-          log_id: true,
-          lesson_note: true,
-          cooked_at: true,
-          recipes: {
-            select: { title: true },
+          select: { status: true },
+        }),
+
+        // 지난달 요리 횟수
+        prisma.cooking_logs.count({
+          where: {
+            user_id: userId,
+            cooked_at: { gte: prevMonthStart, lte: prevMonthEnd },
           },
-        },
-        orderBy: { cooked_at: 'desc' },
-      }),
-    ]);
+        }),
+
+        // 유통기한 임박 재료 (오늘 ~ +7일)
+        prisma.fridge_items.findMany({
+          where: {
+            user_id: userId,
+            expiry_date: { lte: expiryThreshold },
+          },
+          select: {
+            item_id: true,
+            custom_name: true,
+            expiry_date: true,
+            ingredients_master: {
+              select: { name: true, icon_url: true },
+            },
+          },
+          orderBy: { expiry_date: 'asc' },
+        }),
+
+        // 가장 최근 회고 노트 (lesson_note가 있는 것만, 본인이 작성한 COMPLETED 레시피)
+        prisma.cooking_logs.findFirst({
+          where: {
+            user_id: userId,
+            lesson_note: { not: null },
+            recipes: {
+              user_id: userId,
+              status: 'COMPLETED',
+            },
+          },
+          select: {
+            log_id: true,
+            lesson_note: true,
+            cooked_at: true,
+            recipes: {
+              select: { title: true },
+            },
+          },
+          orderBy: { cooked_at: 'desc' },
+        }),
+
+        // 최근 원본 레시피 3개 (가장 최근 등록된 순서)
+        prisma.recipes.findMany({
+          where: { user_id: userId, status: 'COMPLETED' },
+          select: {
+            recipe_id: true,
+            title: true,
+            thumbnail_url: true,
+            difficulty: true,
+            servings: true,
+            created_at: true,
+          },
+          orderBy: { created_at: 'desc' },
+          take: 3,
+        }),
+      ]);
 
     // ── 4. 이번 달 성공률 계산 ────────────────────────────────────────
     const totalCount = thisMonthLogs.length;
@@ -208,6 +224,7 @@ export async function GET() {
         monthly_success_rate: monthlySuccessRate,
         expiring_items: expiringItems,
         latest_lesson: latestLessonData,
+        recent_recipes: recentRecipes,
       },
     });
   } catch (error: unknown) {

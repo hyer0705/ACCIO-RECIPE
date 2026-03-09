@@ -3,15 +3,14 @@
 import Header from '@/components/layout/Header';
 import RecipeUrlForm from '@/components/recipe/RecipeUrlForm';
 import ExtractionLoading from '@/components/recipe/ExtractionLoading';
-import { useRecipeExtraction } from '@/hooks/useRecipeExtraction';
+import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function Home() {
-  const { extractRecipe, cancelExtraction, isExtracting, progress, error, resetError } =
-    useRecipeExtraction();
+  const { startExtraction, isExtracting, error, reset } = useExtractionStore();
 
   const handleSubmit = async (url: string) => {
-    resetError();
-    await extractRecipe(url);
+    reset();
+    await startExtraction(url);
   };
 
   return (
@@ -26,7 +25,7 @@ export default function Home() {
         )}
 
         {isExtracting ? (
-          <ExtractionLoading progress={progress} onCancel={cancelExtraction} />
+          <ExtractionLoading />
         ) : (
           <RecipeUrlForm onSubmitUrl={handleSubmit} isPending={isExtracting} />
         )}

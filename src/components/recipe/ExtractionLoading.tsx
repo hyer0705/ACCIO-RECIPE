@@ -2,7 +2,7 @@
 
 import { Star, XCircle } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { ExtractionProgress } from '@/hooks/useRecipeExtraction';
+import { useExtractionStore } from '@/store/useExtractionStore';
 
 const TIPS = [
   '유튜브 링크뿐만 아니라 블로그 링크도 가능해요!',
@@ -11,12 +11,8 @@ const TIPS = [
   '정확한 계량 수치가 없는 레시피도 AI가 유추해 냅니다.',
 ];
 
-interface ExtractionLoadingProps {
-  progress: ExtractionProgress | null;
-  onCancel: () => void;
-}
-
-export default function ExtractionLoading({ progress, onCancel }: ExtractionLoadingProps) {
+export default function ExtractionLoading() {
+  const { progress, cancelExtraction } = useExtractionStore();
   const [tipIndex, setTipIndex] = useState(0);
 
   // 꿀팁 롤링 타이머
@@ -64,7 +60,7 @@ export default function ExtractionLoading({ progress, onCancel }: ExtractionLoad
         </div>
         <div className="w-full h-3 bg-[#EFE9DB] rounded-full overflow-hidden shadow-inner flex relative">
           <div
-            className="h-full bg-gradient-to-r from-[#FF9A44] to-[#FF5A28] rounded-full transition-all duration-700 ease-in-out relative overflow-hidden"
+            className="h-full bg-linear-to-r from-[#FF9A44] to-[#FF5A28] rounded-full transition-all duration-700 ease-in-out relative overflow-hidden"
             style={{ width: `${percent}%` }}
           >
             {/* 스트라이프 애니메이션 효과 (AI 처리 중임을 강조) */}
@@ -82,7 +78,7 @@ export default function ExtractionLoading({ progress, onCancel }: ExtractionLoad
 
       {/* 사용자 제어 버튼 (Abort) */}
       <button
-        onClick={onCancel}
+        onClick={cancelExtraction}
         className="flex items-center gap-2 px-6 py-3 bg-white border border-gray-300 rounded-full text-gray-600 font-bold hover:bg-gray-50 hover:text-red-500 hover:border-red-300 transition-all shadow-sm group"
       >
         <XCircle className="w-5 h-5 text-gray-400 group-hover:text-red-400" />
