@@ -1,17 +1,21 @@
 'use client';
 
 import { useExtractionStore } from '@/store/useExtractionStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { X, ChevronRight } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 export default function GlobalExtractionToast() {
   const { isExtracting, completedRecipeId, activeTitle, clearCompleted } = useExtractionStore();
   const router = useRouter();
+  const pathname = usePathname();
   const [isVisible, setIsVisible] = useState(false);
 
+  // 마이페이지 계열(/my/*) 경로에서만 보이도록 제한
+  const isMyPage = pathname?.startsWith('/my');
+
   useEffect(() => {
-    if (!isExtracting && completedRecipeId) {
+    if (!isExtracting && completedRecipeId && isMyPage) {
       // 직접 호출 시 발생하는 cascading render 에러 방지를 위해 비동기 처리
       const showTimer = setTimeout(() => setIsVisible(true), 0);
 

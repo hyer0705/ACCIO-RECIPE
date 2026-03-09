@@ -81,7 +81,10 @@ export async function GET() {
     // 레시피 목록 + 각 레시피별 최신 로그 1개
     const [recipes, allLogs] = await Promise.all([
       prisma.recipes.findMany({
-        where: { user_id: userId },
+        where: {
+          user_id: userId,
+          status: 'COMPLETED',
+        },
         select: {
           recipe_id: true,
           title: true,

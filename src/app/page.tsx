@@ -1,12 +1,27 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import RecipeUrlForm from '@/components/recipe/RecipeUrlForm';
 import ExtractionLoading from '@/components/recipe/ExtractionLoading';
 import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function Home() {
-  const { startExtraction, isExtracting, error, reset } = useExtractionStore();
+  const router = useRouter();
+  const { startExtraction, isExtracting, error, reset, completedRecipeId, clearCompleted } =
+    useExtractionStore();
+
+  useEffect(() => {
+    if (completedRecipeId) {
+      router.push(`/recipes/preview/${completedRecipeId}`);
+      // 추출 성공 알림 상태를 조금 뒤에 클리어하여 다른 곳에서 중복 반응하지 않게 함
+      const timer = setTimeout(() => {
+        clearCompleted();
+      }, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [completedRecipeId, router, clearCompleted]);
 
   const handleSubmit = async (url: string) => {
     reset();
