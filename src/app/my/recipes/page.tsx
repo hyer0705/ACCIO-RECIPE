@@ -2,13 +2,21 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useState } from 'react';
+import { X } from 'lucide-react';
 import ExtractionProgressCard from '@/components/recipe/ExtractionProgressCard';
 import { useMyRecipes } from '@/hooks/recipe/useMyRecipes';
 import { useExtractionRefresh } from '@/hooks/recipe/useExtractionRefresh';
+import { useDeleteRecipe } from '@/hooks/recipe/useDeleteRecipe';
+import DeleteConfirmationModal from '@/components/recipe/DeleteConfirmationModal';
 
 export default function MyRecipesPage() {
+  const [isManageMode, setIsManageMode] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
+
   // 비즈니스 로직 분리
   const { data, isLoading, isError } = useMyRecipes();
+  const { mutate: deleteRecipe, isPending: isDeleting } = useDeleteRecipe();
   useExtractionRefresh();
 
   if (isLoading) {
@@ -30,6 +38,14 @@ export default function MyRecipesPage() {
       <div className="flex items-center gap-3 mb-8">
         <h1 className="text-2xl font-bold text-[#3C2D23]">레시피</h1>
         <span className="text-[16px] font-semibold text-gray-400 mt-1">총 {recipes.length}개</span>
+        {recipes.length > 0 && (
+          <button
+            onClick={() => setIsManageMode(!isManageMode)}
+            className="ml-auto px-5 py-1.5 text-[14px] font-bold rounded-[8px] bg-white border border-[#EAE4D9] text-[#3D2E24] shadow-sm hover:bg-gray-50 transition-colors"
+          >
+            {isManageMode ? '완료' : '삭제'}
+          </button>
+        )}
       </div>
 
       {/* Grid Layout (3x3 on desktop) */}
@@ -38,56 +54,99 @@ export default function MyRecipesPage() {
         <ExtractionProgressCard variant="square" />
 
         {/* Recipe Cards */}
-        {recipes.map((recipe) => (
-          <Link
-            key={recipe.recipe_id}
-            href={`/recipes/preview/${recipe.recipe_id}`}
-            className="bg-white rounded-[20px] overflow-hidden shadow-sm hover:shadow-md transition-all group border border-[#F0EBE0] flex flex-col"
-          >
-            <div className="aspect-square w-full bg-linear-to-br from-[#FF9A44]/10 to-[#FF5A28]/10 relative overflow-hidden flex items-center justify-center">
-              {recipe.thumbnail_url ? (
-                <Image
-                  src={recipe.thumbnail_url}
-                  alt={recipe.title}
-                  fill
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2">
-                  <span className="text-4xl group-hover:scale-110 transition-transform">🍳</span>
-                  <span className="text-[11px] font-bold text-[#FF5A28]/40 uppercase tracking-widest">
-                    No Image
-                  </span>
-                </div>
+        {recipes.map((recipe) => {
+          const content = (
+            <div
+              className={`bg-white rounded-[20px] overflow-hidden shadow-sm transition-all group border flex flex-col h-full relative ${
+                isManageMode
+                  ? 'border-[#FF4444] border-2 scale-[0.98]'
+                  : 'border-[#F0EBE0] hover:shadow-md'
+              }`}
+            >
+              {isManageMode && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setDeleteTargetId(recipe.recipe_id);
+                  }}
+                  className="absolute top-4 right-4 w-8 h-8 bg-[#FF4444] rounded-full flex items-center justify-center shadow-md hover:bg-[#E03C3C] hover:scale-110 active:scale-95 transition-all z-20"
+                >
+                  <X className="w-5 h-5 text-white" />
+                </button>
               )}
-              {/* Optional Star Icon placeholder for favorites */}
-              <div className="absolute top-4 left-4 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity">
-                <span className="text-[14px]">⭐</span>
+              <div className="aspect-square w-full bg-linear-to-br from-[#FF9A44]/10 to-[#FF5A28]/10 relative overflow-hidden flex items-center justify-center">
+                {recipe.thumbnail_url ? (
+                  <Image
+                    src={recipe.thumbnail_url}
+                    alt={recipe.title}
+                    fill
+                    className={`object-cover transition-transform duration-500 ${!isManageMode && 'group-hover:scale-105'}`}
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-2">
+                    <span
+                      className={`text-4xl transition-transform ${!isManageMode && 'group-hover:scale-110'}`}
+                    >
+                      🍳
+                    </span>
+                    <span className="text-[11px] font-bold text-[#FF5A28]/40 uppercase tracking-widest">
+                      No Image
+                    </span>
+                  </div>
+                )}
+                {/* Optional Star Icon placeholder for favorites */}
+                {!isManageMode && (
+                  <div className="absolute top-4 left-4 w-10 h-10 bg-white/90 rounded-full flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                    <span className="text-[14px]">⭐</span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Info */}
-            <div className="p-5 flex-1 flex flex-col">
-              <h3 className="text-[17px] font-bold text-[#3C2D23] mb-2 line-clamp-1 group-hover:text-[#FF5A28] transition-colors">
-                {recipe.title}
-              </h3>
-              <div className="flex items-center gap-3 text-[13px] text-gray-400 mt-auto">
-                <span>
-                  🕒{' '}
-                  {recipe.difficulty === 'Easy'
-                    ? '15분'
-                    : recipe.difficulty === 'Medium'
-                      ? '30분'
-                      : '45분'}
-                </span>
-                <span>🔥 {recipe.difficulty || '보통'}</span>
-              </div>
-              <div className="text-[12px] text-gray-300 mt-2">
-                {new Date(recipe.created_at).toLocaleDateString()}
+              {/* Info */}
+              <div className="p-5 flex-1 flex flex-col">
+                <h3
+                  className={`text-[17px] font-bold text-[#3C2D23] mb-2 line-clamp-1 transition-colors ${!isManageMode && 'group-hover:text-[#FF5A28]'}`}
+                >
+                  {recipe.title}
+                </h3>
+                <div className="flex items-center gap-3 text-[13px] text-gray-400 mt-auto">
+                  <span>
+                    🕒{' '}
+                    {recipe.difficulty === 'Easy'
+                      ? '15분'
+                      : recipe.difficulty === 'Medium'
+                        ? '30분'
+                        : '45분'}
+                  </span>
+                  <span>🔥 {recipe.difficulty || '보통'}</span>
+                </div>
+                <div className="text-[12px] text-gray-300 mt-2">
+                  {new Date(recipe.created_at).toLocaleDateString()}
+                </div>
               </div>
             </div>
-          </Link>
-        ))}
+          );
+
+          if (isManageMode) {
+            return (
+              <div key={recipe.recipe_id} className="block cursor-default">
+                {content}
+              </div>
+            );
+          }
+
+          return (
+            <Link
+              key={recipe.recipe_id}
+              href={`/recipes/preview/${recipe.recipe_id}`}
+              className="block"
+            >
+              {content}
+            </Link>
+          );
+        })}
 
         {/* Empty state if nothing yet */}
         {recipes.length === 0 && (
@@ -100,6 +159,24 @@ export default function MyRecipesPage() {
           </div>
         )}
       </div>
+
+      <DeleteConfirmationModal
+        isOpen={deleteTargetId !== null}
+        onClose={() => setDeleteTargetId(null)}
+        onConfirm={() => {
+          if (deleteTargetId) {
+            deleteRecipe(deleteTargetId, {
+              onSuccess: () => {
+                setDeleteTargetId(null);
+                if (recipes.length <= 1) {
+                  setIsManageMode(false);
+                }
+              },
+            });
+          }
+        }}
+        isDeleting={isDeleting}
+      />
     </div>
   );
 }
