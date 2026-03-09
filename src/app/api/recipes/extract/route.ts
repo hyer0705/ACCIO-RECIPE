@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { load } from 'cheerio';
 import prisma from '@/lib/prisma';
 import { processExtraction } from '@/lib/recipe/extractHelpers';
+import { SSEWriter } from '@/lib/recipe/sse';
 
 /**
  * @swagger
@@ -93,137 +94,177 @@ import { processExtraction } from '@/lib/recipe/extractHelpers';
  *         description: 서버 내부 오류 (스크래핑 실패 또는 LLM 오류)
  */
 export async function POST(req: Request) {
+  let url: string;
   try {
-    let { url } = await req.json();
+    const json = await req.json();
+    url = json.url;
+  } catch {
+    return NextResponse.json({ success: false, error: '잘못된 요청입니다.' }, { status: 400 });
+  }
 
-    if (!url) {
-      return NextResponse.json(
-        { success: false, error: 'URL을 제공해야 합니다.' },
-        { status: 400 },
-      );
-    }
+  if (!url) {
+    return NextResponse.json({ success: false, error: 'URL을 제공해야 합니다.' }, { status: 400 });
+  }
 
-    if (!process.env.GEMINI_API_KEY) {
-      return NextResponse.json(
-        { success: false, error: '서버 환경변수에 GEMINI_API_KEY가 설정되어 있지 않습니다.' },
-        { status: 500 },
-      );
-    }
+  if (!process.env.GEMINI_API_KEY) {
+    return NextResponse.json(
+      { success: false, error: '서버 환경변수에 GEMINI_API_KEY가 설정되어 있지 않습니다.' },
+      { status: 500 },
+    );
+  }
 
-    const contentsToAnalyze: Array<string | { fileData: { fileUri: string; mimeType: string } }> =
-      [];
-    let thumbnailUrl: string | null = null;
-    let fallbackTitle = '';
+  // SSE 스트림 생성
+  const stream = new ReadableStream({
+    async start(controller) {
+      const sse = new SSEWriter(controller);
 
-    // 1. YouTube 영상 vs 일반 웹페이지 분기
-    if (url.includes('youtube.com') || url.includes('youtu.be')) {
-      console.log('Gemini: YouTube URL 감지');
-
-      // 구글 문서 가이드에 따라 YouTube URL을 직접 파트로 구성
-      contentsToAnalyze.push({
-        fileData: {
-          fileUri: url,
-          mimeType: 'video/mp4',
-        },
-      });
-
-      // 썸네일 추출
-      const videoIdMatch = url.match(/(?:v=|youtu\.be\/)([^&]+)/);
-      if (videoIdMatch && videoIdMatch[1]) {
-        thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/maxresdefault.jpg`;
-      }
-    } else {
-      // 네이버 블로그는 모바일 버전으로 변환 (JS 렌더링 없이 본문 추출 가능)
-      if (url.includes('blog.naver.com') && !url.includes('m.blog.naver.com')) {
-        url = url.replace('blog.naver.com', 'm.blog.naver.com');
-        console.log('네이버 블로그 감지 → 모바일 버전으로 변환:', url);
-      }
-
-      // 일반 블로그/웹페이지의 경우 텍스트를 스크래핑하여 넘김
-      console.log('일반 웹페이지 감지, 크롤링 시작');
       try {
-        const response = await fetch(url, {
-          headers: {
-            'User-Agent':
-              'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
-          },
-        });
+        const contentsToAnalyze: Array<
+          string | { fileData: { fileUri: string; mimeType: string } }
+        > = [];
+        let thumbnailUrl: string | null = null;
+        let fallbackTitle = '';
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const html = await response.text();
-        const $ = load(html);
+        sse.write({ step: 1, total: 4, message: '원본 링크에서 정보를 추출하고 있어요 🌐' });
 
-        // 네이버 블로그 전용 셀렉터 우선, 그 외 일반 셀렉터 순으로 시도
-        let extractedText = '';
-        const selectors = [
-          '.se-main-container', // 네이버 블로그 스마트에디터
-          '.post-view', // 네이버 블로그 구버전
-          '#postViewArea', // 네이버 블로그 아주 구버전
-          'article',
-          'main',
-          '.post-content',
-          '.entry-content',
-          'body',
-        ];
+        // 1. YouTube 영상 vs 일반 웹페이지 분기
+        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+          console.log('Gemini: YouTube URL 감지');
 
-        for (const selector of selectors) {
-          const text = $(selector).text().replace(/\s+/g, ' ').trim();
-          if (text.length > 100) {
-            extractedText = text;
-            console.log(`크롤링 성공 (셀렉터: "${selector}", 길이: ${text.length}자)`);
-            break;
+          // 구글 문서 가이드에 따라 YouTube URL을 직접 파트로 구성
+          contentsToAnalyze.push({
+            fileData: {
+              fileUri: url,
+              mimeType: 'video/mp4',
+            },
+          });
+
+          // 썸네일 추출
+          const videoIdMatch = url.match(/(?:v=|youtu\.be\/)([^&]+)/);
+          if (videoIdMatch && videoIdMatch[1]) {
+            thumbnailUrl = `https://img.youtube.com/vi/${videoIdMatch[1]}/maxresdefault.jpg`;
+          }
+        } else {
+          // 네이버 블로그는 모바일 버전으로 변환 (JS 렌더링 없이 본문 추출 가능)
+          if (url.includes('blog.naver.com') && !url.includes('m.blog.naver.com')) {
+            url = url.replace('blog.naver.com', 'm.blog.naver.com');
+            console.log('네이버 블로그 감지 → 모바일 버전으로 변환:', url);
+          }
+
+          // 일반 블로그/웹페이지의 경우 텍스트를 스크래핑하여 넘김
+          console.log('일반 웹페이지 감지, 크롤링 시작');
+          try {
+            const response = await fetch(url, {
+              headers: {
+                'User-Agent':
+                  'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
+              },
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const html = await response.text();
+            const $ = load(html);
+
+            // 네이버 블로그 전용 셀렉터 우선, 그 외 일반 셀렉터 순으로 시도
+            let extractedText = '';
+            const selectors = [
+              '.se-main-container', // 네이버 블로그 스마트에디터
+              '.post-view', // 네이버 블로그 구버전
+              '#postViewArea', // 네이버 블로그 아주 구버전
+              'article',
+              'main',
+              '.post-content',
+              '.entry-content',
+              'body',
+            ];
+
+            for (const selector of selectors) {
+              const text = $(selector).text().replace(/\s+/g, ' ').trim();
+              if (text.length > 100) {
+                extractedText = text;
+                console.log(`크롤링 성공 (셀렉터: "${selector}", 길이: ${text.length}자)`);
+                break;
+              }
+            }
+
+            if (extractedText.length > 30000) {
+              extractedText = extractedText.substring(0, 30000);
+            }
+
+            if (!extractedText || extractedText.trim().length === 0) {
+              sse.write({
+                step: 1,
+                total: 4,
+                message: '추출된 텍스트가 부족하여 분석할 수 없습니다.',
+                error: 'Insufficient text',
+              });
+              sse.close();
+              return;
+            }
+
+            fallbackTitle = $('title').text() || $('h1').first().text() || '';
+            thumbnailUrl = $('meta[property="og:image"]').attr('content') || null;
+
+            contentsToAnalyze.push(
+              `다음 텍스트에서 레시피 정보를 추출해서 제공해줘:\n\n${extractedText}`,
+            );
+          } catch (err: unknown) {
+            console.error('웹페이지 스크래핑 실패:', err);
+            sse.write({
+              step: 1,
+              total: 4,
+              message: '해당 웹페이지에서 내용을 추출할 수 없습니다.',
+              error: 'Scraping failed',
+            });
+            sse.close();
+            return;
           }
         }
 
-        if (extractedText.length > 30000) {
-          extractedText = extractedText.substring(0, 30000);
+        // 2. 초기 PENDING 레시피 생성
+        const newRecipe = await prisma.recipes.create({
+          data: {
+            title: fallbackTitle || '이름 모를 레시피',
+            source_url: url,
+            status: 'PENDING',
+            thumbnail_url: thumbnailUrl,
+          },
+        });
+
+        // 3. 백그라운드 추출 프로세스 실행 (이제 await 하여 끝날 때까지 대기하고 SSE로 알림)
+        try {
+          await processExtraction(newRecipe.recipe_id, contentsToAnalyze, fallbackTitle, sse);
+          // 완료되면 sse.close()는 processExtraction 혹은 여기서 담당.
+          // processExtraction 정상 종료 시 complete 시그널은 processExtraction 내부에서 보냄
+        } catch (err) {
+          console.error('Background execution failed implicitly:', err);
+          // 실패 시 DB 업데이트 (선택 사항이지만 안전을 위해)
+          await prisma.recipes.update({
+            where: { recipe_id: newRecipe.recipe_id },
+            data: { status: 'FAILED' },
+          });
+          sse.write({
+            step: 4,
+            total: 4,
+            message: '레시피 추출 중 오류가 발생했습니다.',
+            error: err instanceof Error ? err.message : String(err),
+          });
+          sse.close();
         }
-
-        if (!extractedText || extractedText.trim().length === 0) {
-          return NextResponse.json(
-            { success: false, error: '추출된 텍스트가 부족하여 분석할 수 없습니다.' },
-            { status: 400 },
-          );
-        }
-
-        fallbackTitle = $('title').text() || $('h1').first().text() || '';
-        thumbnailUrl = $('meta[property="og:image"]').attr('content') || null;
-
-        contentsToAnalyze.push(
-          `다음 텍스트에서 레시피 정보를 추출해서 제공해줘:\n\n${extractedText}`,
-        );
-      } catch (err: unknown) {
-        console.error('웹페이지 스크래핑 실패:', err);
-        return NextResponse.json(
-          { success: false, error: '해당 웹페이지에서 내용을 추출할 수 없습니다.' },
-          { status: 400 },
-        );
+      } catch (globalErr) {
+        console.error('SSE Stream Error:', globalErr);
+        sse.error(globalErr);
       }
-    }
+    },
+  });
 
-    // 2. 초기 PENDING 레시피 생성 및 응답 (즉시 응답)
-    const newRecipe = await prisma.recipes.create({
-      data: {
-        title: fallbackTitle || '이름 모를 레시피',
-        source_url: url,
-        status: 'PENDING',
-        thumbnail_url: thumbnailUrl,
-      },
-    });
-
-    // 3. 백그라운드 추출 프로세스 실행 트리거 (await 하지 않음)
-    processExtraction(newRecipe.recipe_id, contentsToAnalyze, fallbackTitle).catch((err) => {
-      console.error('Background execution failed implicitly:', err);
-    });
-
-    // 4. 즉각적인 응답 반환
-    return NextResponse.json({ success: true, recipeId: newRecipe.recipe_id }, { status: 202 });
-  } catch (error: unknown) {
-    console.error('API Error (/api/recipes/extract):', error);
-    const errorMessage =
-      error instanceof Error ? error.message : '레시피 추출 중 오류가 발생했습니다.';
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
-  }
+  return new NextResponse(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache, no-transform',
+      Connection: 'keep-alive',
+    },
+  });
 }
