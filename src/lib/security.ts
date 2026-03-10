@@ -61,9 +61,11 @@ export async function validateSafeUrl(urlStr: string): Promise<URL> {
 
   // DNS 조회를 통해 실제 IP 확인 (SSRF 방지)
   try {
-    const result = await lookup(hostname);
-    if (isPrivateIp(result.address)) {
-      throw new Error(`허용되지 않는 IP 주소(${result.address})에 연결하려고 시도했습니다.`);
+    const addresses = await lookup(hostname, { all: true });
+    for (const result of addresses) {
+      if (isPrivateIp(result.address)) {
+        throw new Error(`허용되지 않는 IP 주소(${result.address})에 연결하려고 시도했습니다.`);
+      }
     }
   } catch (err) {
     // DNS 분석 실패는 일단 서버 오류로 처리하거나 무시할 수 있으나 보안상 차단이 안전함

@@ -3,20 +3,36 @@ import { isPrivateIp, validateSafeUrl } from '@/lib/security';
 
 // dns lookup 모킹
 vi.mock('dns/promises', () => ({
-  lookup: vi.fn(async (hostname: string) => {
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return { address: '127.0.0.1' };
+  lookup: vi.fn(async (hostname: string, options?: { all?: boolean }) => {
+    const records = (() => {
+      if (hostname === 'localhost' || hostname === '127.0.0.1') {
+        return [{ address: '127.0.0.1', family: 4 }];
+      }
+      if (hostname === 'private.com') {
+        return [{ address: '192.168.1.1', family: 4 }];
+      }
+      if (hostname === 'google.com') {
+        return [{ address: '8.8.8.8', family: 4 }];
+      }
+      if (hostname === 'metadata.google.internal') {
+        return [{ address: '169.254.169.254', family: 4 }];
+      }
+      if (hostname === 'rebinding-attack.com') {
+        // 공용 IP와 사설 IP가 섞여 있는 경우
+        return [
+          { address: '1.2.3.4', family: 4 },
+          { address: '192.168.1.1', family: 4 },
+        ];
+      }
+      return null;
+    })();
+
+    if (!records) throw new Error('ENOTFOUND');
+
+    if (options?.all) {
+      return records;
     }
-    if (hostname === 'private.com') {
-      return { address: '192.168.1.1' };
-    }
-    if (hostname === 'google.com') {
-      return { address: '8.8.8.8' };
-    }
-    if (hostname === 'metadata.google.internal') {
-      return { address: '169.254.169.254' };
-    }
-    throw new Error('ENOTFOUND');
+    return records[0];
   }),
 }));
 
@@ -76,6 +92,12 @@ describe('validateSafeUrl', () => {
     await expect(validateSafeUrl('http://127.0.0.1')).rejects.toThrow('사설 IP 주소');
     await expect(validateSafeUrl('http://private.com')).rejects.toThrow('허용되지 않는 IP 주소');
     await expect(validateSafeUrl('http://metadata.google.internal')).rejects.toThrow(
+      '허용되지 않는 IP 주소',
+    );
+  });
+
+  it('should throw for domains with multiple records including private IPs (DNS Rebinding protection)', async () => {
+    await expect(validateSafeUrl('http://rebinding-attack.com')).rejects.toThrow(
       '허용되지 않는 IP 주소',
     );
   });
