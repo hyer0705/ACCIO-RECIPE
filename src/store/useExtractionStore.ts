@@ -104,6 +104,13 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                     abortController: null,
                     activeTitle: data.title || get().activeTitle, // 백엔드에서 제목 넘겨주는 경우 대비
                   });
+
+                  // 추출 성공 상태를 조금 뒤에 클리어하여 다른 곳에서 중복 반응하지 않게 함
+                  // 컴포넌트 unmount와 상관없이 스토어에서 확실히 처리하기 위함
+                  setTimeout(() => {
+                    get().clearCompleted();
+                  }, 500);
+
                   return;
                 }
               } catch (parseErr: unknown) {

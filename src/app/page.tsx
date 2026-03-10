@@ -15,13 +15,8 @@ export default function Home() {
   useEffect(() => {
     if (completedRecipeId) {
       router.push(`/recipes/preview/${completedRecipeId}`);
-      // 추출 성공 알림 상태를 조금 뒤에 클리어하여 다른 곳에서 중복 반응하지 않게 함
-      const timer = setTimeout(() => {
-        clearCompleted();
-      }, 500);
-      return () => clearTimeout(timer);
     }
-  }, [completedRecipeId, router, clearCompleted]);
+  }, [completedRecipeId, router]);
 
   const handleSubmit = async (url: string) => {
     reset();
