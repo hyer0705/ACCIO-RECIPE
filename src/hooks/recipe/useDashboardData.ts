@@ -1,6 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 
 interface ExpiringItem {
   item_id: number;
@@ -34,13 +35,17 @@ export interface DashboardData {
 }
 
 export function useDashboardData() {
+  const { data: session } = useSession();
+  const userId = session?.user?.email;
+
   return useQuery<DashboardData>({
-    queryKey: ['dashboard'],
+    queryKey: ['dashboard', userId],
     queryFn: async () => {
       const res = await fetch('/api/dashboard', { cache: 'no-store' });
       if (!res.ok) throw new Error('Failed to fetch dashboard data');
       const json = await res.json();
       return json.data;
     },
+    enabled: !!userId,
   });
 }

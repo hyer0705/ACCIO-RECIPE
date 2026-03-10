@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 import { useExtractionStore } from '@/store/useExtractionStore';
 import { RecipesResponse } from './useMyRecipes';
 import { DashboardData } from './useDashboardData';
@@ -12,6 +13,8 @@ import { DashboardData } from './useDashboardData';
  */
 export function useExtractionRefresh() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const userId = session?.user?.email;
   const { completedRecipeId, activeTitle, activeThumbnailUrl } = useExtractionStore();
 
   useEffect(() => {
@@ -31,7 +34,7 @@ export function useExtractionRefresh() {
       };
 
       // 1. 내 레시피 목록 캐시 즉시 업데이트
-      queryClient.setQueryData<RecipesResponse>(['my-recipes'], (old) => {
+      queryClient.setQueryData<RecipesResponse>(['my-recipes', userId], (old) => {
         const newData = old?.data ? [...old.data] : [];
         const exists = newData.some((r) => r.recipe_id === completedRecipeId);
 
@@ -54,7 +57,7 @@ export function useExtractionRefresh() {
       });
 
       // 2. 대시보드 최근 레시피 캐시 즉시 업데이트
-      queryClient.setQueryData<DashboardData>(['dashboard'], (old) => {
+      queryClient.setQueryData<DashboardData>(['dashboard', userId], (old) => {
         const recentRecipes = old?.recent_recipes ? [...old.recent_recipes] : [];
         const exists = recentRecipes.some((r) => r.recipe_id === completedRecipeId);
 
@@ -81,13 +84,13 @@ export function useExtractionRefresh() {
       // 3. 실제 서버 데이터와 동기화를 위해 백그라운드 무효화 시작
       // (refetchType: 'all'을 사용하여 비활성 상태인 쿼리도 갱신 대상에 포함시킵니다)
       queryClient.invalidateQueries({
-        queryKey: ['dashboard'],
+        queryKey: ['dashboard', userId],
         refetchType: 'all',
       });
       queryClient.invalidateQueries({
-        queryKey: ['my-recipes'],
+        queryKey: ['my-recipes', userId],
         refetchType: 'all',
       });
     }
-  }, [completedRecipeId, activeTitle, activeThumbnailUrl, queryClient]);
+  }, [completedRecipeId, activeTitle, activeThumbnailUrl, queryClient, userId]);
 }

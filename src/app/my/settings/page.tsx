@@ -111,6 +111,8 @@ export default function SettingsPage() {
   };
 
   const handleLogout = () => {
+    // Clear all queries from the cache when logging out to prevent data exposure
+    queryClient.clear();
     signOut({ callbackUrl: '/login' });
   };
 

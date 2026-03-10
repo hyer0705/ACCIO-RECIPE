@@ -1,4 +1,5 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useSession } from 'next-auth/react';
 
 interface DeleteRecipeResponse {
   success: boolean;
@@ -7,6 +8,8 @@ interface DeleteRecipeResponse {
 
 export function useDeleteRecipe() {
   const queryClient = useQueryClient();
+  const { data: session } = useSession();
+  const userId = session?.user?.email;
 
   return useMutation<DeleteRecipeResponse, Error, number>({
     mutationFn: async (recipeId: number) => {
@@ -20,9 +23,9 @@ export function useDeleteRecipe() {
       return response.json();
     },
     onSuccess: () => {
-      // Invalidate the 'my-recipes' query to refetch the list
-      queryClient.invalidateQueries({ queryKey: ['my-recipes'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboard'] }); // update dashboard count depending on requirement
+      // Invalidate the 'my-recipes' and 'dashboard' query with userId
+      queryClient.invalidateQueries({ queryKey: ['my-recipes', userId] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard', userId] });
     },
   });
 }
