@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import RecipePreview from '@/components/recipe/RecipePreview';
 import { useQuery } from '@tanstack/react-query';
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ExtractedRecipeData } from '@/store/useRecipeStore';
 
 interface RecipeResponse {
@@ -64,7 +64,17 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
   const isActuallyPending = status === 'PENDING' && !hasPopulatedData;
   const recipeData = recipeResponse?.data;
 
-  // 문서 타이틀 업데이트 ('요리 제목' | 레시피 분석 리포트)
+  const previousTitleRef = useRef<string>('');
+
+  // 1. 컴포넌트 마운트 시 최초 제목을 저장하고, 언마운트 시에만 복구 (관심사 분리)
+  useEffect(() => {
+    previousTitleRef.current = document.title;
+    return () => {
+      document.title = previousTitleRef.current;
+    };
+  }, []);
+
+  // 2. 레시피 제목이 변경될 때 문서 타이틀 업데이트 (클린업 없음 -> 깜빡임 방지)
   useEffect(() => {
     const displayTitle =
       recipeData?.title && recipeData.title !== '이름 모를 레시피'
@@ -72,10 +82,6 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
         : '레시피 분석 리포트';
 
     document.title = displayTitle;
-
-    return () => {
-      document.title = 'Accio Recipe'; // 언마운트 시 기본값 복구
-    };
   }, [recipeData?.title]);
 
   if (isActuallyPending) {
