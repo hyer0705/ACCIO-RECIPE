@@ -39,8 +39,24 @@ describe('isPrivateIp', () => {
 
   it('should return true for private IPv6 addresses', () => {
     expect(isPrivateIp('::1')).toBe(true);
+    expect(isPrivateIp('0:0:0:0:0:0:0:1')).toBe(true);
     expect(isPrivateIp('fe80::1')).toBe(true);
     expect(isPrivateIp('fc00::1')).toBe(true);
+    expect(isPrivateIp('fd00::1')).toBe(true);
+    // CIDR 범위 테스트 (fe80::/10)
+    expect(isPrivateIp('febf:ffff:ffff:ffff:ffff:ffff:ffff:ffff')).toBe(true);
+  });
+
+  it('should handle IPv4-mapped IPv6 addresses correctly', () => {
+    // 사설 대역 매핑
+    expect(isPrivateIp('::ffff:127.0.0.1')).toBe(true);
+    expect(isPrivateIp('::ffff:10.0.0.1')).toBe(true);
+    expect(isPrivateIp('::ffff:172.16.0.1')).toBe(true);
+    expect(isPrivateIp('::ffff:192.168.1.1')).toBe(true);
+
+    // 공인 대역 매핑 (차단되면 안 됨)
+    expect(isPrivateIp('::ffff:172.217.0.1')).toBe(false); // Google public IP
+    expect(isPrivateIp('::ffff:8.8.8.8')).toBe(false);
   });
 });
 

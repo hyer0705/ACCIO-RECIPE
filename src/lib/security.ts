@@ -1,42 +1,39 @@
 import { lookup } from 'dns/promises';
+import ipaddr from 'ipaddr.js';
 
 /**
  * IP 주소가 사설 주소 대역(Private, Loopback, Reserved)인지 확인합니다.
  */
 export function isPrivateIp(ip: string): boolean {
-  // IPv4 사설 대역
-  // 127.0.0.0/8 (Loopback)
-  // 10.0.0.0/8 (Private)
-  // 172.16.0.0/12 (Private)
-  // 192.168.0.0/16 (Private)
-  // 169.254.0.0/16 (Link-local)
-  // 0.0.0.0/8 (Broadcast)
-  const ipv4Match = ip.match(/^(\d+)\.(\d+)\.(\d+)\.(\d+)$/);
-  if (ipv4Match) {
-    const [_, o1, o2] = ipv4Match.map(Number);
-    if (o1 === 127) return true;
-    if (o1 === 10) return true;
-    if (o1 === 172 && o2 >= 16 && o2 <= 31) return true;
-    if (o1 === 192 && o2 === 168) return true;
-    if (o1 === 169 && o2 === 254) return true;
-    if (o1 === 0) return true;
+  try {
+    const addr = ipaddr.parse(ip);
+    const range = addr.range();
+
+    // Loopback, Link-local, Unique-local 확인
+    if (['loopback', 'linkLocal', 'uniqueLocal', 'unspecified', 'broadcast'].includes(range)) {
+      return true;
+    }
+
+    // IPv4 사설 대역 (RFC 1918)
+    if (addr.kind() === 'ipv4') {
+      if (range === 'private') return true;
+    }
+
+    // IPv6의 경우 IPv4-mapped address를 추출하여 내부 IPv4가 사설 대역인지 확인
+    if (addr.kind() === 'ipv6') {
+      const ipv6Addr = addr as ipaddr.IPv6;
+      if (ipv6Addr.isIPv4MappedAddress()) {
+        const ipv4Addr = ipv6Addr.toIPv4Address();
+        return isPrivateIp(ipv4Addr.toString());
+      }
+    }
+
     return false;
+  } catch (err) {
+    // 파싱 실패 시 안전하게 사설로 간주하거나 false 반환
+    // 여기서는 유효하지 않은 IP는 일단 public이 아니라고 보고 true를 반환하여 차단하는 것이 안전할 수 있음
+    return true;
   }
-
-  // IPv6 사설 및 루프백 대역 (간단한 체크)
-  const ipv6 = ip.toLowerCase();
-  if (ipv6 === '::1' || ipv6 === '0:0:0:0:0:0:0:1') return true;
-  if (ipv6.startsWith('fe80:')) return true; // Link-local
-  if (ipv6.startsWith('fc00:') || ipv6.startsWith('fd00:')) return true; // Unique local addr
-  if (
-    ipv6.startsWith('::ffff:127.') ||
-    ipv6.startsWith('::ffff:10.') ||
-    ipv6.startsWith('::ffff:192.168.') ||
-    ipv6.startsWith('::ffff:172.')
-  )
-    return true; // IPv4-mapped private
-
-  return false;
 }
 
 /**
