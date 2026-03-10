@@ -16,8 +16,8 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
   // 상태: 사용자가 조절할 수 있는 인원 수
   const [currentServings, setCurrentServings] = useState(data.servings || 1);
   const [isEditing, setIsEditing] = useState(false);
-  const [editedIngredients, setEditedIngredients] = useState(data.ingredients);
-  const [editedSteps, setEditedSteps] = useState(data.steps);
+  const [editedIngredients, setEditedIngredients] = useState(structuredClone(data.ingredients));
+  const [editedSteps, setEditedSteps] = useState(structuredClone(data.steps));
 
   const { isPending: isSaving } = useSaveRecipe(currentServings);
 
@@ -81,9 +81,11 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
                             type="text"
                             value={ingredient.name}
                             onChange={(e) => {
-                              const newIngs = [...editedIngredients];
-                              newIngs[idx].name = e.target.value;
-                              setEditedIngredients(newIngs);
+                              setEditedIngredients((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], name: e.target.value };
+                                return next;
+                              });
                             }}
                             className="flex-1 p-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-[#FF5A28]/50 bg-white"
                           />
@@ -95,11 +97,12 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
                             type="number"
                             value={ingredient.amount ?? ''}
                             onChange={(e) => {
-                              const newIngs = [...editedIngredients];
-                              newIngs[idx].amount = e.target.value
-                                ? parseFloat(e.target.value)
-                                : null;
-                              setEditedIngredients(newIngs);
+                              const val = e.target.value ? parseFloat(e.target.value) : null;
+                              setEditedIngredients((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], amount: val };
+                                return next;
+                              });
                             }}
                             className="w-1/3 p-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-[#FF5A28]/50 bg-white"
                           />
@@ -108,9 +111,11 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
                             type="text"
                             value={ingredient.unit ?? ''}
                             onChange={(e) => {
-                              const newIngs = [...editedIngredients];
-                              newIngs[idx].unit = e.target.value;
-                              setEditedIngredients(newIngs);
+                              setEditedIngredients((prev) => {
+                                const next = [...prev];
+                                next[idx] = { ...next[idx], unit: e.target.value };
+                                return next;
+                              });
                             }}
                             placeholder="단위(g, 큰술 등)"
                             className="flex-1 p-2 rounded-lg border border-gray-300 text-sm outline-none focus:ring-2 focus:ring-[#FF5A28]/50 bg-white"
@@ -187,9 +192,11 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
                           title="조리 순서"
                           value={step.instruction}
                           onChange={(e) => {
-                            const newSteps = [...editedSteps];
-                            newSteps[idx].instruction = e.target.value;
-                            setEditedSteps(newSteps);
+                            setEditedSteps((prev) => {
+                              const next = [...prev];
+                              next[idx] = { ...next[idx], instruction: e.target.value };
+                              return next;
+                            });
                           }}
                           className="w-full p-3 rounded-lg border border-gray-300 text-sm whitespace-pre-line outline-none focus:ring-2 focus:ring-[#FF5A28]/50"
                           rows={3}
