@@ -32,10 +32,10 @@ export default function GlobalExtractionToast() {
     } else {
       setTimeout(() => setIsVisible(false), 0);
     }
-  }, [isExtracting, completedRecipeId, clearCompleted]);
+  }, [isExtracting, completedRecipeId, clearCompleted, isMyPage]);
 
-  // 완료된 ID가 없거나 화면에서 즉시 사라져야 하면 렌더 안함
-  if (!completedRecipeId && !isVisible) return null;
+  // 마이페이지가 아니거나, 완료된 ID가 없으면서 화면에서도 사라져야 하면 렌더 안함
+  if (!isMyPage || (!completedRecipeId && !isVisible)) return null;
 
   const handleClose = (e: React.MouseEvent) => {
     e.stopPropagation();
