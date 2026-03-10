@@ -23,8 +23,64 @@ vi.mock('@google/genai', () => {
   };
 });
 
-// 2. Mocking global fetch for Web scraping (Cheerio)
-global.fetch = vi.fn();
+// 2. Mocking dns/promises for security utilities
+vi.mock('dns/promises', () => ({
+  lookup: vi.fn(async (hostname: string) => {
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '169.254.169.254' ||
+      hostname === '192.168.1.1'
+    ) {
+      return { address: hostname === 'localhost' ? '127.0.0.1' : hostname };
+    }
+    return { address: '8.8.8.8' }; // Default to a public IP
+  }),
+}));
+
+// 3. Mocking global fetch for Web scraping (Cheerio)
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
+  headers: new Headers(),
+} as unknown as Response);
+
+// 3. Mocking Next.js headers & next-auth
+vi.mock('next/headers', () => ({
+  headers: vi.fn(),
+  cookies: vi.fn(),
+}));
+
+vi.mock('next-auth', () => ({
+  getServerSession: vi.fn().mockResolvedValue({
+    user: { id: '1', name: 'Test User', email: 'test@example.com' },
+  }),
+}));
+
+vi.mock('@/lib/authOptions', () => ({
+  authOptions: {},
+}));
+
+// 4. Mocking Prisma and processExtraction
+vi.mock('@/lib/prisma', () => ({
+  default: {
+    recipes: {
+      create: vi.fn().mockResolvedValue({ recipe_id: 1, status: 'PENDING' }),
+      update: vi.fn(),
+    },
+    $transaction: vi.fn(),
+  },
+}));
+
+vi.mock('@/lib/recipe/extractHelpers', () => ({
+  processExtraction: vi.fn().mockImplementation(async (recipeId, contents, title, sse) => {
+    // 실제 processExtraction처럼 마지막에 sse.close()를 호출해줘야 스트림이 닫힙니다.
+    sse.write({ step: 4, total: 4, message: '완료!' });
+    sse.close();
+    return true;
+  }),
+}));
 
 describe('POST /api/recipes/extract (Gemini)', () => {
   beforeEach(() => {
@@ -60,16 +116,34 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     } as unknown as Response);
 
     const res = await POST(req);
-    const data = await res.json();
+    const textDecoder = new TextDecoder();
+    const reader = res.body?.getReader();
+    let resultText = '';
 
-    expect(res.status).toBe(400);
-    expect(data.success).toBe(false);
-    expect(data.error).toBe('추출된 텍스트가 부족하여 분석할 수 없습니다.');
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resultText += textDecoder.decode(value, { stream: true });
+      }
+    }
+
+    const events = resultText
+      .split('\n\n')
+      .filter((e) => e.trim().startsWith('data: '))
+      .map((e) => JSON.parse(e.replace(/^data:\s*/, '')));
+
+    const errorEvent = events.find((e) => e.error === 'Insufficient text');
+
+    expect(res.status).toBe(200); // SSE 시작은 항상 200
+    expect(errorEvent).toBeDefined();
+    expect(errorEvent?.message).toBe('추출된 텍스트가 부족하여 분석할 수 없습니다.');
   });
 
-  test('유튜브 URL 요청 시 Gemini를 호출하고 결과를 반환한다', async () => {
-    const testUrl = 'https://www.youtube.com/watch?v=123ABCTest';
-    const req = createRequest({ url: testUrl });
+  test('다양한 유튜브 URL 요청 시 올바르게 ID를 추출하고 썸네일을 반환한다', async () => {
+    // 가장 일반적인 URL 형식으로 첫 번째 API 테스트 검증
+    const baseTestUrl = 'https://www.youtube.com/watch?v=123ABCTest';
+    const req = createRequest({ url: baseTestUrl });
 
     const expectedRecipe = {
       title: '바스크 치즈케이크',
@@ -84,30 +158,99 @@ describe('POST /api/recipes/extract (Gemini)', () => {
       text: JSON.stringify(expectedRecipe),
     });
 
-    const res = await POST(req);
-    const data = await res.json();
+    // 유튜브 페이지 메타데이터 fetch 모킹
+    vi.mocked(global.fetch).mockResolvedValueOnce({
+      ok: true,
+      text: vi.fn().mockResolvedValue(`
+        <html>
+          <head>
+            <meta property="og:title" content="바스크 치즈케이크 만들기 - YouTube" />
+          </head>
+        </html>
+      `),
+    } as unknown as Response);
 
-    // Gemini API 호출 검증
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
-    expect(mockGenerateContent).toHaveBeenCalledWith(
-      expect.objectContaining({
-        model: 'gemini-3-flash-preview',
-        contents: expect.arrayContaining([
-          expect.objectContaining({
-            fileData: { fileUri: testUrl, mimeType: 'video/mp4' },
-          }),
-        ]),
-      }),
-    );
+    const res = await POST(req);
+
+    // 응답 스트림 읽기 대기
+    const textDecoder = new TextDecoder();
+    const reader = res.body?.getReader();
+    let resultText = '';
+
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resultText += textDecoder.decode(value, { stream: true });
+      }
+    }
+
+    // SSE 이벤트 파싱
+    const events = resultText
+      .split('\n\n')
+      .filter((e) => e.trim().startsWith('data: '))
+      .map((e) => {
+        try {
+          return JSON.parse(e.replace(/^data:\s*/, ''));
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    // console.log('DEBUG: Youtube Events:', events); // 디버깅용
+    const youtubeEvent = events.find((e) => e.step === 1 && e.thumbnailUrl);
 
     expect(res.status).toBe(200);
-    expect(data.success).toBe(true);
-    // 썸네일 규칙 확인
-    expect(data.data.source_url).toBe(testUrl);
-    expect(data.data.thumbnail_url).toBe('https://img.youtube.com/vi/123ABCTest/maxresdefault.jpg');
-    // 반환 데이터 확인
-    expect(data.data.title).toBe('바스크 치즈케이크');
-    expect(data.data.ingredients[0].name).toBe('크림치즈');
+
+    // 썸네일 규칙 확인 (hqdefault)
+    expect(youtubeEvent).toBeDefined();
+    expect(youtubeEvent?.thumbnailUrl).toBe('https://img.youtube.com/vi/123ABCTest/hqdefault.jpg');
+    // 제목 추출 확인 (정규식을 통해 " - YouTube" 제거됨을 검증)
+    expect(youtubeEvent?.title).toBe('바스크 치즈케이크 만들기');
+
+    // 추가 URL 형식에 대한 썸네일 추출 검증을 위해 내부 로직 테스트를 모방한 추가 요청 테스트
+    const otherYoutubeUrls = [
+      'https://youtu.be/123ABCTest',
+      'https://www.youtube.com/shorts/123ABCTest',
+      'https://www.youtube.com/live/123ABCTest',
+      'https://www.youtube.com/embed/123ABCTest',
+      'https://www.youtube.com/v/123ABCTest',
+    ];
+
+    for (const url of otherYoutubeUrls) {
+      const otherReq = createRequest({ url });
+      const otherRes = await POST(otherReq);
+
+      let otherResultText = '';
+      const otherReader = otherRes.body?.getReader();
+      if (otherReader) {
+        while (true) {
+          const { done, value } = await otherReader.read();
+          if (done) break;
+          otherResultText += textDecoder.decode(value, { stream: true });
+        }
+      }
+
+      const otherEvents = otherResultText
+        .split('\n\n')
+        .filter((e) => e.trim().startsWith('data: '))
+        .map((e) => {
+          try {
+            return JSON.parse(e.replace(/^data:\s*/, ''));
+          } catch {
+            return null;
+          }
+        })
+        .filter(Boolean);
+
+      const otherYoutubeEvent = otherEvents.find((e) => e.step === 1 && e.thumbnailUrl);
+
+      expect(otherYoutubeEvent).toBeDefined();
+      expect(otherYoutubeEvent?.thumbnailUrl).toBe(
+        'https://img.youtube.com/vi/123ABCTest/hqdefault.jpg',
+      );
+    }
   });
 
   test('일반 웹페이지 URL 요청 시 Cheerio 파싱 후 Gemini로 요약한다', async () => {
@@ -122,7 +265,7 @@ describe('POST /api/recipes/extract (Gemini)', () => {
         </head>
         <body>
           <article>
-            오늘은 엄청 맛있는 김치 볶음밥 레시피입니다. 참기름을 두르고 1분간 뜸을 들이세요.
+            오늘은 엄청 맛있는 김치 볶음밥 레시피입니다. 참기름을 두르고 1분간 뜸을 들이세요. 김치를 잘게 썰어서 밥과 함께 볶아주면 정말 맛있습니다. 누구나 쉽게 따라할 수 있는 초간단 레시피입니다. 지금 바로 시작해보세요!
           </article>
         </body>
       </html>
@@ -147,20 +290,93 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     });
 
     const res = await POST(req);
-    const data = await res.json();
+    const textDecoder = new TextDecoder();
+    const reader = res.body?.getReader();
+    let resultText = '';
+    if (reader) {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        resultText += textDecoder.decode(value, { stream: true });
+      }
+    }
+
+    // SSE 이벤트 파싱
+    const events = resultText
+      .split('\n\n')
+      .filter((e) => e.trim().startsWith('data: '))
+      .map((e) => {
+        try {
+          return JSON.parse(e.replace(/^data:\s*/, ''));
+        } catch {
+          return null;
+        }
+      })
+      .filter(Boolean);
+
+    // console.log('DEBUG: Blog Events:', events); // 디버깅용
+    const blogEvent = events.find((e) => e.step === 1 && e.thumbnailUrl);
 
     expect(global.fetch).toHaveBeenCalledWith(
       'https://blog.example.com/recipe',
       expect.any(Object),
     );
-    expect(mockGenerateContent).toHaveBeenCalledTimes(1);
 
     expect(res.status).toBe(200);
-    expect(data.success).toBe(true);
     // 메타 속성 추출 확인
-    expect(data.data.source_url).toBe('https://blog.example.com/recipe');
-    expect(data.data.thumbnail_url).toBe('https://example.com/img.jpg');
-    // 제목 추출 확인 (Fallback이 아니라 모델 응답 제목 확인)
-    expect(data.data.title).toBe('대접 맛집 볶음밥');
+    expect(blogEvent).toBeDefined();
+    expect(blogEvent?.thumbnailUrl).toBe('https://example.com/img.jpg');
+  });
+
+  test('사설 IP 또는 localhost URL 요청 시 400 에러를 반환한다', async () => {
+    const maliciousUrls = [
+      'http://localhost:3000/admin',
+      'http://127.0.0.1/config',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://192.168.1.1/router-settings',
+    ];
+
+    for (const url of maliciousUrls) {
+      const req = createRequest({ url });
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error).toMatch(/사설 IP|허용되지 않는 IP|유효하지 않은 URL/);
+    }
+  });
+
+  test('교묘하게 위조된 유튜브 URL을 차단한다', async () => {
+    const fakeYoutubeUrls = [
+      'https://attacker.com/youtube.com/watch?v=123',
+      'https://youtube.com.attacker.com/watch?v=123',
+      'https://not-youtube.com/v=123',
+    ];
+
+    for (const url of fakeYoutubeUrls) {
+      const req = createRequest({ url });
+
+      // 일반 웹페이지로 인식되어 fetch를 시도하게 됨
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
+      } as unknown as Response);
+
+      const res = await POST(req);
+      const textDecoder = new TextDecoder();
+      const reader = res.body?.getReader();
+      let resultText = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          resultText += textDecoder.decode(value, { stream: true });
+        }
+      }
+
+      // 유튜브로 감지되지 않아야 함 (이벤트 스트림에 유튜브 관련 메시지가 없어야 함)
+      expect(resultText).not.toContain('유튜브 영상 정보를 가져왔습니다');
+    }
   });
 });

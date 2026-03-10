@@ -1,22 +1,26 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import RecipeUrlForm from '@/components/recipe/RecipeUrlForm';
 import ExtractionLoading from '@/components/recipe/ExtractionLoading';
-import { useRecipeExtraction } from '@/hooks/useRecipeExtraction';
+import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function Home() {
-  const { mutateAsync: extractRecipe } = useRecipeExtraction();
-  const [isNavigating, setIsNavigating] = useState(false);
+  const router = useRouter();
+  const { startExtraction, isExtracting, error, reset, completedRecipeId, clearCompleted } =
+    useExtractionStore();
+
+  useEffect(() => {
+    if (completedRecipeId) {
+      router.push(`/recipes/preview/${completedRecipeId}`);
+    }
+  }, [completedRecipeId, router]);
 
   const handleSubmit = async (url: string) => {
-    try {
-      setIsNavigating(true);
-      await extractRecipe(url);
-    } catch {
-      setIsNavigating(false);
-    }
+    reset();
+    await startExtraction(url);
   };
 
   return (
@@ -24,10 +28,16 @@ export default function Home() {
       <Header />
 
       <main className="flex flex-col items-center justify-center p-4">
-        {isNavigating ? (
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-300 text-red-700 px-6 py-4 rounded-xl font-medium shadow-sm max-w-xl text-center">
+            {error}
+          </div>
+        )}
+
+        {isExtracting ? (
           <ExtractionLoading />
         ) : (
-          <RecipeUrlForm onSubmitUrl={handleSubmit} isPending={isNavigating} />
+          <RecipeUrlForm onSubmitUrl={handleSubmit} isPending={isExtracting} />
         )}
       </main>
     </div>

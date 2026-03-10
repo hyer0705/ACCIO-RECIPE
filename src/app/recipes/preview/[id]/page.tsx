@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Header from '@/components/layout/Header';
 import RecipePreview from '@/components/recipe/RecipePreview';
 import { useQuery } from '@tanstack/react-query';
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { ExtractedRecipeData } from '@/store/useRecipeStore';
 
 interface RecipeResponse {
@@ -62,12 +62,33 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
 
   // 과거 레시피는 status가 PENDING이어도 이미 데이터가 존재할 수 있음
   const isActuallyPending = status === 'PENDING' && !hasPopulatedData;
+  const recipeData = recipeResponse?.data;
+
+  const previousTitleRef = useRef<string>('');
+
+  // 1. 컴포넌트 마운트 시 최초 제목을 저장하고, 언마운트 시에만 복구 (관심사 분리)
+  useEffect(() => {
+    previousTitleRef.current = document.title;
+    return () => {
+      document.title = previousTitleRef.current;
+    };
+  }, []);
+
+  // 2. 레시피 제목이 변경될 때 문서 타이틀 업데이트 (클린업 없음 -> 깜빡임 방지)
+  useEffect(() => {
+    const displayTitle =
+      recipeData?.title && recipeData.title !== '이름 모를 레시피'
+        ? `${recipeData.title} | 레시피 분석 리포트`
+        : '레시피 분석 리포트';
+
+    document.title = displayTitle;
+  }, [recipeData?.title]);
 
   if (isActuallyPending) {
     return (
       <div className="h-screen flex flex-col font-sans overflow-hidden">
         <Header />
-        <LoadingReportUI />
+        <LoadingReportUI title={recipeData?.title} />
       </div>
     );
   }
@@ -79,6 +100,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     typeof recipeResponse === 'object' &&
     'data' in recipeResponse &&
     !!recipeResponse.data;
+
   if (isLoading && !hasData) {
     return (
       <div className="h-screen flex flex-col font-sans overflow-hidden">
@@ -97,13 +119,11 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     );
   }
 
-  const recipeData = recipeResponse?.data;
   if (!recipeData) {
     return null;
   }
 
   // API가 보내준 base_servings 대신 실제 화면에 쓰일 servings 값(requested_servings)을 보장
-  // Next.js API의 /api/recipes/[id] (GET)는 requested_servings를 반환해줌
   const finalRecipeData = {
     ...recipeData,
     servings: recipeData.requested_servings || recipeData.base_servings || recipeData.servings || 1,
@@ -130,11 +150,15 @@ function InitialLoadingUI() {
 }
 
 // AI 분석 중일 때 보여지는 UI 컴포넌트
-function LoadingReportUI() {
+function LoadingReportUI({ title }: { title?: string }) {
+  const displayTitle = title && title !== '이름 모를 레시피' ? title : '레시피';
+
   return (
     <div className="flex-1 flex flex-col items-center justify-center bg-[#FAF6E9] p-4 text-center">
       <div className="w-16 h-16 border-4 border-[#FF6B00] border-t-transparent rounded-full animate-spin mb-6"></div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-2">AI가 레시피를 분석하고 있어요 👩‍🍳</h2>
+      <h2 className="text-2xl font-bold text-gray-800 mb-2">
+        AI가 <span className="text-[#FF6B00]">{displayTitle}</span>를 분석하고 있어요 👩‍🍳
+      </h2>
       <p className="text-gray-500">
         최대 10~20초 정도 소요될 수 있어요.
         <br />이 페이지를 벗어나셔도 추출은 백그라운드에서 진행됩니다!

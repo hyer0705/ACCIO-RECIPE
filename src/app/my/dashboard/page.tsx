@@ -1,42 +1,17 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
 import Link from 'next/link';
-
-// Data Interface based on API response
-interface ExpiringItem {
-  item_id: number;
-  name: string;
-  icon_url: string | null;
-  expiry_date: string; // YYYY-MM-DD
-  d_day: number;
-}
-
-interface LatestLesson {
-  log_id: number;
-  recipe_title: string;
-  lesson_note: string;
-  cooked_at: string;
-}
-
-interface DashboardData {
-  monthly_cooking_count: number;
-  prev_month_cooking_count: number;
-  monthly_success_rate: number | null;
-  expiring_items: ExpiringItem[];
-  latest_lesson: LatestLesson | null;
-}
+import Image from 'next/image';
+import ExtractionProgressCard from '@/components/recipe/ExtractionProgressCard';
+import { useDashboardData } from '@/hooks/recipe/useDashboardData';
+import { useExtractionRefresh } from '@/hooks/recipe/useExtractionRefresh';
+import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function MyDashboardPage() {
-  const { data, isLoading, isError } = useQuery<DashboardData>({
-    queryKey: ['dashboard'],
-    queryFn: async () => {
-      const res = await fetch('/api/dashboard');
-      if (!res.ok) throw new Error('Failed to fetch dashboard data');
-      const json = await res.json();
-      return json.data;
-    },
-  });
+  // 비즈니스 로직 분리
+  const { data, isLoading, isError } = useDashboardData();
+  const { isExtracting } = useExtractionStore();
+  useExtractionRefresh();
 
   if (isLoading) {
     return (
@@ -53,6 +28,10 @@ export default function MyDashboardPage() {
       </div>
     );
   }
+
+  // 총 3개의 카드만 보여주기 위한 로직 (추출 중이면 추출 카드 포함 3개)
+  const maxRecipeCount = isExtracting ? 2 : 3;
+  const displayRecipes = data.recent_recipes.slice(0, maxRecipeCount);
 
   // 월간 횟수 증감 계산
   const diffCount = data.monthly_cooking_count - data.prev_month_cooking_count;
@@ -137,9 +116,64 @@ export default function MyDashboardPage() {
         </div>
       </div>
 
+      {/* 최근 레시피 목록 */}
+      <div className="mb-10">
+        <div className="flex justify-between items-center mb-6">
+          <h2 className="text-[18px] font-bold text-[#3C2D23]">최근 레시피</h2>
+          <Link
+            href="/my/recipes"
+            className="text-[14px] font-bold text-gray-400 hover:text-[#FF5A28] transition-colors"
+          >
+            전체보기 &gt;
+          </Link>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* 진행 중인 레시피 카드 (추출 중일 때만 노출) */}
+          <ExtractionProgressCard variant="landscape" />
+
+          {/* 등록된 최근 레시피들 */}
+          {displayRecipes.map((recipe) => (
+            <Link
+              key={recipe.recipe_id}
+              href={`/recipes/preview/${recipe.recipe_id}`}
+              className="bg-white rounded-[16px] overflow-hidden shadow-sm hover:shadow-md transition-shadow group h-[130px] flex flex-col border border-[#F0EBE0]"
+            >
+              <div className="h-[80px] w-full bg-linear-to-r from-[#FDF9F1] to-[#F0EBE0] relative shrink-0 flex items-center justify-center">
+                {recipe.thumbnail_url ? (
+                  <Image
+                    src={recipe.thumbnail_url}
+                    alt={recipe.title}
+                    fill
+                    className="object-cover"
+                  />
+                ) : (
+                  <span className="text-2xl opacity-60 group-hover:scale-110 transition-transform">
+                    🍲
+                  </span>
+                )}
+                <div className="absolute inset-0 bg-black/5 group-hover:bg-black/0 transition-colors"></div>
+              </div>
+              <div className="p-3 flex-1 flex flex-col justify-center">
+                <h3 className="text-[14px] font-bold text-[#3C2D23] truncate group-hover:text-[#FF5A28] transition-colors">
+                  {recipe.title}
+                </h3>
+              </div>
+            </Link>
+          ))}
+
+          {/* 데이터가 없을 때의 placeholder (추출 중도 아닐 때) */}
+          {displayRecipes.length === 0 && !isExtracting && (
+            <div className="col-span-full py-10 text-center text-gray-400 text-[14px] bg-white rounded-[20px] shadow-sm border border-dashed">
+              아직 저장된 레시피가 없습니다.
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* Lesson Note */}
       {data.latest_lesson && (
-        <div className="border border-[#FF5A28] bg-white rounded-[20px] p-8 mb-8 relative">
+        <div className="border border-[#FF5A28] bg-white rounded-[20px] p-8 mb-10 relative shadow-sm">
           <h2 className="text-[15px] font-bold text-[#FF5A28] mb-4">
             💡 잊지 마세요! 지난번의 배움
           </h2>
