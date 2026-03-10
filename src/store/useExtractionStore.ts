@@ -39,21 +39,27 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
 
     const controller = new AbortController();
 
-    // 임시 제목: URL 도메인이나 기본 텍스트
-    const domain = new URL(url).hostname.replace('www.', '');
-
-    set({
-      isExtracting: true,
-      activeUrl: url,
-      activeTitle: `${domain} 레시피 추출 중...`,
-      activeThumbnailUrl: null,
-      progress: { step: 1, total: 4, message: '레시피 분석 준비 중...' },
-      error: null,
-      completedRecipeId: null,
-      abortController: controller,
-    });
+    // URL 검증 및 도메인 추출
+    let domain = '링크';
+    try {
+      domain = new URL(url).hostname.replace(/^www\./, '');
+    } catch {
+      set({ error: '올바른 URL을 입력해 주세요.' });
+      return;
+    }
 
     try {
+      set({
+        isExtracting: true,
+        activeUrl: url,
+        activeTitle: `${domain} 레시피 추출 중...`,
+        activeThumbnailUrl: null,
+        progress: { step: 1, total: 4, message: '레시피 분석 준비 중...' },
+        error: null,
+        completedRecipeId: null,
+        abortController: controller,
+      });
+
       const response = await fetch('/api/recipes/extract', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
