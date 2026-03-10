@@ -44,7 +44,6 @@ export default function DeleteConfirmationModal({
         <AlertDialogFooter className="flex-col sm:flex-row gap-3 sm:gap-4 mt-2">
           <AlertDialogCancel
             disabled={isDeleting}
-            onClick={onClose}
             className="flex-1 rounded-[12px] bg-[#F8F6F0] h-12 text-[15px] font-bold text-[#7C736B] border-0 shadow-none hover:bg-[#EAE5DB] hover:text-[#7C736B] focus:ring-0 sm:mt-0 transition-all active:scale-[0.98]"
           >
             취소
