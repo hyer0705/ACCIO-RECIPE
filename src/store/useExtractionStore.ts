@@ -67,6 +67,15 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
         signal: controller.signal,
       });
 
+      if (!response.ok) {
+        const payload = await response.json().catch(() => null);
+        throw new Error(payload?.error ?? '레시피 추출에 실패했습니다.');
+      }
+
+      if (!response.headers.get('content-type')?.includes('text/event-stream')) {
+        throw new Error('스트리밍 응답 형식이 올바르지 않습니다.');
+      }
+
       if (!response.body) throw new Error('서버 응답이 없습니다.');
 
       const reader = response.body.getReader();
@@ -74,59 +83,63 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
       let done = false;
       let buffer = '';
 
-      while (!done) {
-        const { value, done: readerDone } = await reader.read();
-        done = readerDone;
-        if (value) {
-          buffer += decoder.decode(value, { stream: true });
+      try {
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          if (value) {
+            buffer += decoder.decode(value, { stream: true });
 
-          let eventEndIndex;
-          while ((eventEndIndex = buffer.indexOf('\n\n')) >= 0) {
-            const eventStr = buffer.slice(0, eventEndIndex);
-            buffer = buffer.slice(eventEndIndex + 2);
+            let eventEndIndex;
+            while ((eventEndIndex = buffer.indexOf('\n\n')) >= 0) {
+              const eventStr = buffer.slice(0, eventEndIndex);
+              buffer = buffer.slice(eventEndIndex + 2);
 
-            if (eventStr.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(eventStr.slice(6));
+              if (eventStr.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(eventStr.slice(6));
 
-                if (data.error) {
-                  throw new Error(data.message || data.error);
-                }
+                  if (data.error) {
+                    throw new Error(data.message || data.error);
+                  }
 
-                if (data.step && data.total) {
-                  // 만약 백엔드에서 제목이나 썸네일도 같이 내려준다면 여기서 업데이트 가능
-                  set({
-                    progress: { step: data.step, total: data.total, message: data.message },
-                    activeThumbnailUrl: data.thumbnailUrl || get().activeThumbnailUrl,
-                    activeTitle: data.title || get().activeTitle,
-                  });
-                }
+                  if (data.step && data.total) {
+                    set({
+                      progress: { step: data.step, total: data.total, message: data.message },
+                      activeThumbnailUrl: data.thumbnailUrl || get().activeThumbnailUrl,
+                      activeTitle: data.title || get().activeTitle,
+                    });
+                  }
 
-                if (data.recipeId) {
-                  // 완료
-                  set({
-                    isExtracting: false,
-                    completedRecipeId: data.recipeId,
-                    abortController: null,
-                    activeTitle: data.title || get().activeTitle, // 백엔드에서 제목 넘겨주는 경우 대비
-                  });
+                  if (data.recipeId) {
+                    set({
+                      isExtracting: false,
+                      completedRecipeId: data.recipeId,
+                      abortController: null,
+                      activeTitle: data.title || get().activeTitle,
+                    });
 
-                  // 추출 성공 상태를 조금 뒤에 클리어하여 다른 곳에서 중복 반응하지 않게 함
-                  // 컴포넌트 unmount와 상관없이 스토어에서 확실히 처리하기 위함
-                  setTimeout(() => {
-                    get().clearCompleted();
-                  }, 500);
+                    setTimeout(() => {
+                      get().clearCompleted();
+                    }, 500);
 
-                  return;
-                }
-              } catch (parseErr: unknown) {
-                if (parseErr instanceof Error && !parseErr.message.includes('JSON')) {
-                  throw parseErr;
+                    return;
+                  }
+                } catch (parseErr: unknown) {
+                  if (parseErr instanceof Error && !parseErr.message.includes('JSON')) {
+                    throw parseErr;
+                  }
                 }
               }
             }
           }
         }
+
+        // 루프가 끝났는데도 return되지 않았다면(성공 응답을 못 받았다면) 에러
+        throw new Error('추출 스트림이 완료 신호 없이 종료되었습니다.');
+      } finally {
+        // 리더가 닫히지 않았을 경우를 대비해 확실히 닫음
+        reader.releaseLock();
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.name === 'AbortError') {
@@ -138,6 +151,12 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
           error: err instanceof Error ? err.message : '레시피 추출에 실패했습니다.',
           abortController: null,
         });
+      }
+    } finally {
+      // 어떤 이유로든 종료되면 컨트롤러 정리 (이미 완료 처리된 경우는 위 return에서 빠져나감)
+      const state = get();
+      if (state.isExtracting) {
+        set({ isExtracting: false, abortController: null });
       }
     }
   },
