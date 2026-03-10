@@ -71,6 +71,7 @@ export default function MyRecipesPage() {
                     e.stopPropagation();
                     setDeleteTargetId(recipe.recipe_id);
                   }}
+                  aria-label={`레시피 삭제: ${recipe.title}`}
                   className="absolute top-4 right-4 w-8 h-8 bg-[#FF4444] rounded-full flex items-center justify-center shadow-md hover:bg-[#E03C3C] hover:scale-110 active:scale-95 transition-all z-20"
                 >
                   <X className="w-5 h-5 text-white" />
