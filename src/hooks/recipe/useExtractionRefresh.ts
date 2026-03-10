@@ -32,53 +32,61 @@ export function useExtractionRefresh() {
 
       // 1. 내 레시피 목록 캐시 즉시 업데이트
       queryClient.setQueryData<RecipesResponse>(['my-recipes'], (old) => {
-        if (!old || !old.data) return old;
+        const newData = old?.data ? [...old.data] : [];
+        const exists = newData.some((r) => r.recipe_id === completedRecipeId);
 
-        const exists = old.data.some((r) => r.recipe_id === completedRecipeId);
         if (exists) {
           // 이미 존재하면 해당 항목 업데이트 (PENDING -> COMPLETED)
           return {
-            ...old,
-            data: old.data.map((r) =>
+            ...old!,
+            data: newData.map((r) =>
               r.recipe_id === completedRecipeId ? { ...r, ...newRecipeTemplate } : r,
             ),
           };
         }
-        // 존재하지 않으면 최상단에 추가
+
+        // 존재하지 않거나 캐시가 비어있으면 최상단에 추가
         return {
           ...old,
-          data: [newRecipeTemplate, ...old.data],
-        };
+          success: true,
+          data: [newRecipeTemplate, ...newData],
+        } as RecipesResponse;
       });
 
       // 2. 대시보드 최근 레시피 캐시 즉시 업데이트
       queryClient.setQueryData<DashboardData>(['dashboard'], (old) => {
-        if (!old || !old.recent_recipes) return old;
+        const recentRecipes = old?.recent_recipes ? [...old.recent_recipes] : [];
+        const exists = recentRecipes.some((r) => r.recipe_id === completedRecipeId);
 
-        const exists = old.recent_recipes.some((r) => r.recipe_id === completedRecipeId);
         if (exists) {
           return {
-            ...old,
-            recent_recipes: old.recent_recipes.map((r) =>
+            ...old!,
+            recent_recipes: recentRecipes.map((r) =>
               r.recipe_id === completedRecipeId ? { ...r, ...newRecipeTemplate } : r,
             ),
           };
         }
+
         return {
+          monthly_cooking_count: 0,
+          prev_month_cooking_count: 0,
+          monthly_success_rate: 0,
+          expiring_items: [],
+          latest_lesson: null,
           ...old,
-          recent_recipes: [newRecipeTemplate, ...old.recent_recipes].slice(0, 6),
-        };
+          recent_recipes: [newRecipeTemplate, ...recentRecipes].slice(0, 6),
+        } as DashboardData;
       });
 
       // 3. 실제 서버 데이터와 동기화를 위해 백그라운드 무효화 시작
-      // (refetchType: 'active'는 현재 화면에 보이는 것만 즉시 다시 불러옵니다)
+      // (refetchType: 'all'을 사용하여 비활성 상태인 쿼리도 갱신 대상에 포함시킵니다)
       queryClient.invalidateQueries({
         queryKey: ['dashboard'],
-        refetchType: 'active',
+        refetchType: 'all',
       });
       queryClient.invalidateQueries({
         queryKey: ['my-recipes'],
-        refetchType: 'active',
+        refetchType: 'all',
       });
     }
   }, [completedRecipeId, activeTitle, activeThumbnailUrl, queryClient]);
