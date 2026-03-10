@@ -153,6 +153,13 @@ export async function POST(req: Request) {
     async start(controller) {
       const sse = new SSEWriter(controller);
 
+      // 클라이언트 연결 중단 감지
+      const onAbort = () => {
+        console.log('Client disconnected, closing SSE stream');
+        controller.close();
+      };
+      req.signal.addEventListener('abort', onAbort);
+
       try {
         const contentsToAnalyze: Array<
           string | { fileData: { fileUri: string; mimeType: string } }
@@ -201,6 +208,7 @@ export async function POST(req: Request) {
                 'User-Agent':
                   'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
               },
+              signal: req.signal, // 시그널 전달
             });
             if (response.ok) {
               const html = await response.text();
@@ -245,6 +253,7 @@ export async function POST(req: Request) {
                 'User-Agent':
                   'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
               },
+              signal: req.signal, // 시그널 전달
             });
 
             if (!response.ok) {
@@ -331,10 +340,20 @@ export async function POST(req: Request) {
 
         // 3. 백그라운드 추출 프로세스 실행 (이제 await 하여 끝날 때까지 대기하고 SSE로 알림)
         try {
-          await processExtraction(newRecipe.recipe_id, contentsToAnalyze, fallbackTitle, sse);
+          await processExtraction(
+            newRecipe.recipe_id,
+            contentsToAnalyze,
+            fallbackTitle,
+            sse,
+            req.signal,
+          );
           // 완료되면 sse.close()는 processExtraction 혹은 여기서 담당.
           // processExtraction 정상 종료 시 complete 시그널은 processExtraction 내부에서 보냄
         } catch (err) {
+          if (req.signal.aborted) {
+            console.log(`[Recipe ${newRecipe.recipe_id}] Analysis aborted.`);
+            return;
+          }
           console.error('Background execution failed implicitly:', err);
           // 실패 시 DB 업데이트 (선택 사항이지만 안전을 위해)
           await prisma.recipes.update({
@@ -352,6 +371,8 @@ export async function POST(req: Request) {
       } catch (globalErr) {
         console.error('SSE Stream Error:', globalErr);
         sse.error(globalErr);
+      } finally {
+        req.signal.removeEventListener('abort', onAbort);
       }
     },
   });

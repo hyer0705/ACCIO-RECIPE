@@ -39,7 +39,12 @@ vi.mock('dns/promises', () => ({
 }));
 
 // 3. Mocking global fetch for Web scraping (Cheerio)
-global.fetch = vi.fn();
+global.fetch = vi.fn().mockResolvedValue({
+  ok: true,
+  status: 200,
+  text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
+  headers: new Headers(),
+} as unknown as Response);
 
 // 3. Mocking Next.js headers & next-auth
 vi.mock('next/headers', () => ({

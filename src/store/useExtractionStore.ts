@@ -132,7 +132,9 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
   cancelExtraction: () => {
     const { abortController } = get();
     if (abortController) {
+      console.log('Aborting extraction fetch...');
       abortController.abort();
+      set({ isExtracting: false, abortController: null, activeUrl: null, progress: null });
     }
   },
 

@@ -100,6 +100,10 @@ export async function fetchWithSsrfProtection(
       redirect: 'manual', // 리다이렉트를 수동으로 처리
     });
 
+    if (!response) {
+      throw new Error('네트워크 응답이 없습니다.');
+    }
+
     if (response.status >= 300 && response.status < 400) {
       const location = response.headers.get('location');
       if (!location) {
