@@ -23,7 +23,22 @@ vi.mock('@google/genai', () => {
   };
 });
 
-// 2. Mocking global fetch for Web scraping (Cheerio)
+// 2. Mocking dns/promises for security utilities
+vi.mock('dns/promises', () => ({
+  lookup: vi.fn(async (hostname: string) => {
+    if (
+      hostname === 'localhost' ||
+      hostname === '127.0.0.1' ||
+      hostname === '169.254.169.254' ||
+      hostname === '192.168.1.1'
+    ) {
+      return { address: hostname === 'localhost' ? '127.0.0.1' : hostname };
+    }
+    return { address: '8.8.8.8' }; // Default to a public IP
+  }),
+}));
+
+// 3. Mocking global fetch for Web scraping (Cheerio)
 global.fetch = vi.fn();
 
 // 3. Mocking Next.js headers & next-auth
@@ -245,7 +260,7 @@ describe('POST /api/recipes/extract (Gemini)', () => {
         </head>
         <body>
           <article>
-            오늘은 엄청 맛있는 김치 볶음밥 레시피입니다. 참기름을 두르고 1분간 뜸을 들이세요.
+            오늘은 엄청 맛있는 김치 볶음밥 레시피입니다. 참기름을 두르고 1분간 뜸을 들이세요. 김치를 잘게 썰어서 밥과 함께 볶아주면 정말 맛있습니다. 누구나 쉽게 따라할 수 있는 초간단 레시피입니다. 지금 바로 시작해보세요!
           </article>
         </body>
       </html>
@@ -306,5 +321,57 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     // 메타 속성 추출 확인
     expect(blogEvent).toBeDefined();
     expect(blogEvent?.thumbnailUrl).toBe('https://example.com/img.jpg');
+  });
+
+  test('사설 IP 또는 localhost URL 요청 시 400 에러를 반환한다', async () => {
+    const maliciousUrls = [
+      'http://localhost:3000/admin',
+      'http://127.0.0.1/config',
+      'http://169.254.169.254/latest/meta-data/',
+      'http://192.168.1.1/router-settings',
+    ];
+
+    for (const url of maliciousUrls) {
+      const req = createRequest({ url });
+      const res = await POST(req);
+      const data = await res.json();
+
+      expect(res.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error).toMatch(/사설 IP|허용되지 않는 IP|유효하지 않은 URL/);
+    }
+  });
+
+  test('교묘하게 위조된 유튜브 URL을 차단한다', async () => {
+    const fakeYoutubeUrls = [
+      'https://attacker.com/youtube.com/watch?v=123',
+      'https://youtube.com.attacker.com/watch?v=123',
+      'https://not-youtube.com/v=123',
+    ];
+
+    for (const url of fakeYoutubeUrls) {
+      const req = createRequest({ url });
+
+      // 일반 웹페이지로 인식되어 fetch를 시도하게 됨
+      vi.mocked(global.fetch).mockResolvedValueOnce({
+        ok: true,
+        text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
+      } as unknown as Response);
+
+      const res = await POST(req);
+      const textDecoder = new TextDecoder();
+      const reader = res.body?.getReader();
+      let resultText = '';
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          resultText += textDecoder.decode(value, { stream: true });
+        }
+      }
+
+      // 유튜브로 감지되지 않아야 함 (이벤트 스트림에 유튜브 관련 메시지가 없어야 함)
+      expect(resultText).not.toContain('유튜브 영상 정보를 가져왔습니다');
+    }
   });
 });

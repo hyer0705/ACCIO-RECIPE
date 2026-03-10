@@ -5,6 +5,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
 import { processExtraction } from '@/lib/recipe/extractHelpers';
 import { SSEWriter } from '@/lib/recipe/sse';
+import { validateSafeUrl, fetchWithSsrfProtection } from '@/lib/security';
 
 /**
  * @swagger
@@ -108,6 +109,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'URL을 제공해야 합니다.' }, { status: 400 });
   }
 
+  // URL 검증 및 SSRF 방지
+  let parsedUrl: URL;
+  try {
+    parsedUrl = await validateSafeUrl(url);
+    // 검증된 URL의 절대 경로를 사용 (상대 경로 및 이상한 입력 방지)
+    url = parsedUrl.toString();
+  } catch (err) {
+    return NextResponse.json(
+      { success: false, error: err instanceof Error ? err.message : '유효하지 않은 URL입니다.' },
+      { status: 400 },
+    );
+  }
+
   if (!process.env.GEMINI_API_KEY) {
     return NextResponse.json(
       { success: false, error: '서버 환경변수에 GEMINI_API_KEY가 설정되어 있지 않습니다.' },
@@ -154,7 +168,14 @@ export async function POST(req: Request) {
         });
 
         // 1. YouTube 영상 vs 일반 웹페이지 분기
-        if (url.includes('youtube.com') || url.includes('youtu.be')) {
+        const hostname = parsedUrl.hostname.toLowerCase();
+        const isYouTube =
+          hostname === 'youtube.com' ||
+          hostname.endsWith('.youtube.com') ||
+          hostname === 'youtu.be' ||
+          hostname.endsWith('.youtu.be');
+
+        if (isYouTube) {
           console.log('Gemini: YouTube URL 감지');
 
           // 구글 문서 가이드에 따라 YouTube URL을 직접 파트로 구성
@@ -175,7 +196,7 @@ export async function POST(req: Request) {
 
           // 유튜브 영상 제목(Title) 추출 시도
           try {
-            const response = await fetch(url, {
+            const response = await fetchWithSsrfProtection(url, {
               headers: {
                 'User-Agent':
                   'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
@@ -205,15 +226,21 @@ export async function POST(req: Request) {
           });
         } else {
           // 네이버 블로그는 모바일 버전으로 변환 (JS 렌더링 없이 본문 추출 가능)
-          if (url.includes('blog.naver.com') && !url.includes('m.blog.naver.com')) {
+          const blogHostname = parsedUrl.hostname.toLowerCase();
+          if (
+            (blogHostname === 'blog.naver.com' || blogHostname.endsWith('.blog.naver.com')) &&
+            !blogHostname.includes('m.blog.naver.com')
+          ) {
             url = url.replace('blog.naver.com', 'm.blog.naver.com');
             console.log('네이버 블로그 감지 → 모바일 버전으로 변환:', url);
+            // 변환 후 재검증
+            await validateSafeUrl(url);
           }
 
           // 일반 블로그/웹페이지의 경우 텍스트를 스크래핑하여 넘김
           console.log('일반 웹페이지 감지, 크롤링 시작');
           try {
-            const response = await fetch(url, {
+            const response = await fetchWithSsrfProtection(url, {
               headers: {
                 'User-Agent':
                   'Mozilla/5.0 (iPhone; CPU iPhone OS 16_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.0 Mobile/15E148 Safari/604.1',
