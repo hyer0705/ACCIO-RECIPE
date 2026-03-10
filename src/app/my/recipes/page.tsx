@@ -4,13 +4,17 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState } from 'react';
 import { X } from 'lucide-react';
+import { useQueryClient } from '@tanstack/react-query';
 import ExtractionProgressCard from '@/components/recipe/ExtractionProgressCard';
 import { useMyRecipes } from '@/hooks/recipe/useMyRecipes';
 import { useExtractionRefresh } from '@/hooks/recipe/useExtractionRefresh';
 import { useDeleteRecipe } from '@/hooks/recipe/useDeleteRecipe';
 import DeleteConfirmationModal from '@/components/recipe/DeleteConfirmationModal';
+import { RecipesResponse } from '@/hooks/recipe/useMyRecipes';
+import { DashboardData } from '@/hooks/recipe/useDashboardData';
 
 export default function MyRecipesPage() {
+  const queryClient = useQueryClient();
   const [isManageMode, setIsManageMode] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null);
 
@@ -164,14 +168,51 @@ export default function MyRecipesPage() {
       <DeleteConfirmationModal
         isOpen={deleteTargetId !== null}
         onClose={() => setDeleteTargetId(null)}
-        onConfirm={() => {
+        onConfirm={async () => {
           if (deleteTargetId) {
+            // 1. 기존 데이터 스냅샷 캡처 (에러 발생 시 롤백용)
+            const prevRecipes = queryClient.getQueryData<RecipesResponse>(['my-recipes']);
+            const prevDashboard = queryClient.getQueryData<DashboardData>(['dashboard']);
+
+            // 2. 캐시를 즉시 업데이트하여 UI에서 즉시 제거 (낙관적 업데이트)
+            queryClient.setQueryData<RecipesResponse>(['my-recipes'], (old) => {
+              if (!old || !old.data) return old;
+              return {
+                ...old,
+                data: old.data.filter((r) => r.recipe_id !== deleteTargetId),
+              };
+            });
+
+            queryClient.setQueryData<DashboardData>(['dashboard'], (old) => {
+              if (!old || !old.recent_recipes) return old;
+              return {
+                ...old,
+                recent_recipes: old.recent_recipes.filter((r) => r.recipe_id !== deleteTargetId),
+              };
+            });
+
+            // 3. 실제 삭제 요청 수행
             deleteRecipe(deleteTargetId, {
               onSuccess: () => {
                 setDeleteTargetId(null);
-                if (recipes.length <= 1) {
+                // 삭제 후 남은 레시피가 없으면 관리 모드 종료 (이미 필터링된 데이터 기준)
+                const currentRecipes =
+                  queryClient.getQueryData<RecipesResponse>(['my-recipes'])?.data || [];
+                if (currentRecipes.length === 0) {
                   setIsManageMode(false);
                 }
+              },
+              onError: (error) => {
+                console.error('삭제 실패, 롤백 수행:', error);
+                // 에러 발생 시 이전 데이터로 복구
+                if (prevRecipes) queryClient.setQueryData(['my-recipes'], prevRecipes);
+                if (prevDashboard) queryClient.setQueryData(['dashboard'], prevDashboard);
+                alert('레시피 삭제에 실패했습니다. 다시 시도해 주세요.');
+              },
+              onSettled: () => {
+                // 성공하든 실패하든 서버와 동기화를 위해 무효화
+                queryClient.invalidateQueries({ queryKey: ['my-recipes'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard'] });
               },
             });
           }
