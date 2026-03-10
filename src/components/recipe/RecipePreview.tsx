@@ -19,17 +19,39 @@ export default function RecipePreview({ data }: RecipePreviewProps) {
   const [editedIngredients, setEditedIngredients] = useState(structuredClone(data.ingredients));
   const [editedSteps, setEditedSteps] = useState(structuredClone(data.steps));
 
-  const { isPending: isSaving } = useSaveRecipe(currentServings);
+  const { mutate: saveRecipe, isPending: isSaving } = useSaveRecipe(currentServings);
 
   const incrementServings = () => setCurrentServings((prev) => prev + 1);
   const decrementServings = () => setCurrentServings((prev) => (prev > 1 ? prev - 1 : 1));
 
   const handleStartCooking = () => {
-    // 사용자가 수정을 하나도 안 했다면 바로 이동 (서버에 이미 COMPLETED 상태로 저장되어 있음)
-    // 수정을 했다면 저장을 하고 이동해야 하지만, 유저 요청에 따라 '로직 제거'를 우선 적용
-    // 나중에 '저장 후 시작' 버튼을 따로 만들거나 할 수 있음
-    const url = `/recipes/${data.recipe_id}/cook${currentServings ? `?servings=${currentServings}` : ''}`;
-    router.push(url);
+    // 1. 현재 편집된 데이터 구성
+    const updatedData: ExtractedRecipeData = {
+      ...data,
+      servings: currentServings,
+      ingredients: editedIngredients,
+      steps: editedSteps,
+    };
+
+    // 2. 변경 사항이 있는지 체크 (간단한 비교를 위해 JSON.stringify 사용)
+    const originalIngredientsStr = JSON.stringify(data.ingredients);
+    const editedIngredientsStr = JSON.stringify(editedIngredients);
+    const originalStepsStr = JSON.stringify(data.steps);
+    const editedStepsStr = JSON.stringify(editedSteps);
+
+    const isDirty =
+      originalIngredientsStr !== editedIngredientsStr ||
+      originalStepsStr !== editedStepsStr ||
+      currentServings !== data.servings;
+
+    if (isDirty) {
+      // 수정한 내용이 있다면 저장 후 이동 (useSaveRecipe의 onSuccess에서 이동 처리)
+      saveRecipe(updatedData);
+    } else {
+      // 수정한 내용이 없다면 바로 이동
+      const url = `/recipes/${data.recipe_id}/cook${currentServings ? `?servings=${currentServings}` : ''}`;
+      router.push(url);
+    }
   };
 
   const displayTitle =
