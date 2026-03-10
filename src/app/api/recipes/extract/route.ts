@@ -109,6 +109,25 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: false, error: 'URL을 제공해야 합니다.' }, { status: 400 });
   }
 
+  // 세션 확인 (유저 ID 할당을 위함) - 테스트 환경에서는 Mock ID 사용
+  let userId: number;
+  if (process.env.NODE_ENV === 'test') {
+    userId = 1;
+  } else {
+    try {
+      const session = await getServerSession(authOptions);
+      if (!session || !session.user || !('id' in session.user)) {
+        return NextResponse.json({ success: false, error: '인증이 필요합니다.' }, { status: 401 });
+      }
+      userId = parseInt(session.user.id as string, 10);
+    } catch (error) {
+      return NextResponse.json(
+        { success: false, error: '인증 정보 확인 중 오류가 발생했습니다.' },
+        { status: 500 },
+      );
+    }
+  }
+
   // URL 검증 및 SSRF 방지
   let parsedUrl: URL;
   try {
@@ -127,25 +146,6 @@ export async function POST(req: Request) {
       { success: false, error: '서버 환경변수에 GEMINI_API_KEY가 설정되어 있지 않습니다.' },
       { status: 500 },
     );
-  }
-
-  // 세션 확인 (유저 ID 할당을 위함) - 테스트 환경에서는 Mock ID 사용
-  let userId: number;
-  if (process.env.NODE_ENV === 'test') {
-    userId = 1;
-  } else {
-    try {
-      const session = await getServerSession(authOptions);
-      if (!session || !session.user || !('id' in session.user)) {
-        return NextResponse.json({ success: false, error: '인증이 필요합니다.' }, { status: 401 });
-      }
-      userId = parseInt(session.user.id as string, 10);
-    } catch (error) {
-      return NextResponse.json(
-        { success: false, error: '인증 정보 확인 중 오류가 발생했습니다.' },
-        { status: 500 },
-      );
-    }
   }
 
   // SSE 스트림 생성
