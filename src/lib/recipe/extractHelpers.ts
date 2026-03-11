@@ -245,7 +245,17 @@ export async function processExtraction(
     });
 
     console.log(`[Recipe ${recipeId}] DB 저장 완료 ✅`);
-    sse.write({ step: 4, total: 4, message: '완료!', recipeId: recipeId });
+    sse.write({
+      step: 4,
+      total: 4,
+      message: '완료!',
+      recipeId: recipeId,
+      // LLM이 정제한 최종 title을 함께 전달해 Toast의 activeTitle과 DB 제목을 동기화
+      title:
+        recipeData.title && recipeData.title.trim() !== ''
+          ? recipeData.title
+          : fallbackTitle || '이름 모를 레시피',
+    });
     sse.close();
   } catch (err: unknown) {
     if (err instanceof Error && err.message === 'Aborted') {
