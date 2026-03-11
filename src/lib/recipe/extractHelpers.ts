@@ -189,16 +189,19 @@ export async function processExtraction(
     await checkAborted();
 
     // 3. DB 저장 (Transaction)
+    // DB 저장과 SSE 완료 이벤트 양쪽에서 동일한 title을 보장하기 위해 한 번만 계산
+    const finalTitle =
+      recipeData.title && recipeData.title.trim() !== ''
+        ? recipeData.title
+        : fallbackTitle || '이름 모를 레시피';
+
     await prisma.$transaction(async (tx) => {
       if (signal?.aborted) throw new Error('Aborted');
 
       await tx.recipes.update({
         where: { recipe_id: recipeId },
         data: {
-          title:
-            recipeData.title && recipeData.title.trim() !== ''
-              ? recipeData.title
-              : fallbackTitle || '이름 모를 레시피',
+          title: finalTitle,
           difficulty: normalizeDifficulty(recipeData.difficulty),
           servings: recipeData.servings,
           status: 'COMPLETED',
@@ -250,11 +253,7 @@ export async function processExtraction(
       total: 4,
       message: '완료!',
       recipeId: recipeId,
-      // LLM이 정제한 최종 title을 함께 전달해 Toast의 activeTitle과 DB 제목을 동기화
-      title:
-        recipeData.title && recipeData.title.trim() !== ''
-          ? recipeData.title
-          : fallbackTitle || '이름 모를 레시피',
+      title: finalTitle, // DB와 동일한 값 사용
     });
     sse.close();
   } catch (err: unknown) {

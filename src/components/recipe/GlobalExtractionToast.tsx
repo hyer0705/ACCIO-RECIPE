@@ -20,14 +20,16 @@ export default function GlobalExtractionToast() {
       const showTimer = setTimeout(() => setIsVisible(true), 0);
 
       // 10초 후 자동 숨김
+      let clearTimer: ReturnType<typeof setTimeout>;
       const hideTimer = setTimeout(() => {
         setIsVisible(false);
-        setTimeout(() => clearCompleted(), 300); // 애니메이션 후 클리어
+        clearTimer = setTimeout(() => clearCompleted(), 300); // 애니메이션 후 클리어
       }, 10000);
 
       return () => {
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
+        clearTimeout(clearTimer); // 새 추출 시 race condition 방지
       };
     } else {
       // cleanup을 반환해야 타이머가 중간에 취소되지 않음
