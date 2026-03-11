@@ -118,11 +118,7 @@ export const useExtractionStore = create<ExtractionState>((set, get) => ({
                       abortController: null,
                       activeTitle: data.title || get().activeTitle,
                     });
-
-                    setTimeout(() => {
-                      get().clearCompleted();
-                    }, 500);
-
+                    // clearCompleted는 GlobalExtractionToast가 10초 후 자동으로 처리함
                     return;
                   }
                 } catch (parseErr: unknown) {

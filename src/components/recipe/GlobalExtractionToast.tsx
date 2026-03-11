@@ -20,19 +20,26 @@ export default function GlobalExtractionToast() {
       const showTimer = setTimeout(() => setIsVisible(true), 0);
 
       // 10초 후 자동 숨김
+      let clearTimer: ReturnType<typeof setTimeout>;
       const hideTimer = setTimeout(() => {
         setIsVisible(false);
-        setTimeout(() => clearCompleted(), 300); // 애니메이션 후 클리어
+        clearTimer = setTimeout(() => clearCompleted(), 300); // 애니메이션 후 클리어
       }, 10000);
 
       return () => {
         clearTimeout(showTimer);
         clearTimeout(hideTimer);
+        clearTimeout(clearTimer); // 새 추출 시 race condition 방지
       };
     } else {
-      setTimeout(() => setIsVisible(false), 0);
+      // cleanup을 반환해야 타이머가 중간에 취소되지 않음
+      const hideTimer = setTimeout(() => setIsVisible(false), 0);
+      return () => clearTimeout(hideTimer);
     }
-  }, [isExtracting, completedRecipeId, clearCompleted, isMyPage]);
+    // clearCompleted는 Zustand 액션으로 참조가 안정적이지 않을 수 있어
+    // deps에서 제외해 10초 타이머가 의도치 않게 리셋되는 것을 방지
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isExtracting, completedRecipeId, isMyPage]);
 
   // 마이페이지가 아니거나, 완료된 ID가 없으면서 화면에서도 사라져야 하면 렌더 안함
   if (!isMyPage || (!completedRecipeId && !isVisible)) return null;
