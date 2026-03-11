@@ -9,8 +9,7 @@ import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function Home() {
   const router = useRouter();
-  const { startExtraction, isExtracting, error, reset, completedRecipeId, clearCompleted } =
-    useExtractionStore();
+  const { startExtraction, isExtracting, error, reset, completedRecipeId } = useExtractionStore();
 
   useEffect(() => {
     if (completedRecipeId) {

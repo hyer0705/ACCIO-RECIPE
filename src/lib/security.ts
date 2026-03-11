@@ -30,6 +30,7 @@ export function isPrivateIp(ip: string): boolean {
 
     return false;
   } catch (err) {
+    console.error('IP parsing error:', err);
     // 파싱 실패 시 안전하게 사설로 간주하거나 false 반환
     // 여기서는 유효하지 않은 IP는 일단 public이 아니라고 보고 true를 반환하여 차단하는 것이 안전할 수 있음
     return true;

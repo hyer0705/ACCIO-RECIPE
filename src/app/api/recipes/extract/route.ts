@@ -121,6 +121,7 @@ export async function POST(req: Request) {
       }
       userId = parseInt(session.user.id as string, 10);
     } catch (error) {
+      console.error('Session check error:', error);
       return NextResponse.json(
         { success: false, error: '인증 정보 확인 중 오류가 발생했습니다.' },
         { status: 500 },
