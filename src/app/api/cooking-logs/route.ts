@@ -194,7 +194,7 @@ const VALID_STATUS_VALUES = Object.values(cooking_logs_status);
 interface CreateCookingLogBody {
   status: cooking_logs_status; // 필수
   recipe_id: number; // 필수 — 플로우상 항상 존재
-  lesson_note?: string; // 선택 (건너뛰기 지원을 위해 선택 사항으로 변경)
+  lesson_note?: string; // 필수 (빈 문자열 불가)
   companion?: string; // 선택 — 최대 50자
 }
 
@@ -225,11 +225,15 @@ export async function POST(req: Request) {
       errors.push('recipe_id는 양의 정수여야 합니다.');
     }
 
-    // lesson_note 검사 (선택)
-    if (body.lesson_note !== undefined && body.lesson_note !== null) {
-      if (typeof body.lesson_note !== 'string') {
-        errors.push('lesson_note는 문자열이어야 합니다.');
-      }
+    // lesson_note 검사 (필수, 빈 문자열 불가)
+    if (
+      body.lesson_note === undefined ||
+      body.lesson_note === null ||
+      body.lesson_note.trim().length === 0
+    ) {
+      errors.push('lesson_note는 필수입니다.');
+    } else if (typeof body.lesson_note !== 'string') {
+      errors.push('lesson_note는 문자열이어야 합니다.');
     }
 
     // companion 검사 (선택)

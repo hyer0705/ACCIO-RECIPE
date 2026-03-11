@@ -15,12 +15,14 @@ vi.mock('next-auth', () => ({
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockLogsFind, mockLogsCount, mockFridgeFind, mockLogsFindFirst } = vi.hoisted(() => ({
-  mockLogsFind: vi.fn(),
-  mockLogsCount: vi.fn(),
-  mockFridgeFind: vi.fn(),
-  mockLogsFindFirst: vi.fn(),
-}));
+const { mockLogsFind, mockLogsCount, mockFridgeFind, mockLogsFindFirst, mockRecipesFind } =
+  vi.hoisted(() => ({
+    mockLogsFind: vi.fn(),
+    mockLogsCount: vi.fn(),
+    mockFridgeFind: vi.fn(),
+    mockLogsFindFirst: vi.fn(),
+    mockRecipesFind: vi.fn(),
+  }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
@@ -31,6 +33,9 @@ vi.mock('@/lib/prisma', () => ({
     },
     fridge_items: {
       findMany: mockFridgeFind,
+    },
+    recipes: {
+      findMany: mockRecipesFind,
     },
   },
 }));
@@ -80,6 +85,7 @@ function setHappyPath() {
   mockLogsCount.mockResolvedValueOnce(9);
   mockFridgeFind.mockResolvedValueOnce(MOCK_EXPIRING_ITEMS);
   mockLogsFindFirst.mockResolvedValueOnce(MOCK_LATEST_LESSON);
+  mockRecipesFind.mockResolvedValueOnce([]);
 }
 
 describe('GET /api/dashboard', () => {

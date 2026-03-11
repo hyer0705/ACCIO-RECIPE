@@ -25,16 +25,20 @@ vi.mock('@google/genai', () => {
 
 // 2. Mocking dns/promises for security utilities
 vi.mock('dns/promises', () => ({
-  lookup: vi.fn(async (hostname: string) => {
-    if (
+  lookup: vi.fn(async (hostname: string, options?: { all?: boolean }) => {
+    const isPrivate =
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '169.254.169.254' ||
-      hostname === '192.168.1.1'
-    ) {
-      return { address: hostname === 'localhost' ? '127.0.0.1' : hostname };
+      hostname === '192.168.1.1';
+
+    const resolvedIp = isPrivate ? (hostname === 'localhost' ? '127.0.0.1' : hostname) : '8.8.8.8';
+
+    // { all: true } 옵션이면 배열로 반환 (실제 Node.js dns.lookup 동작)
+    if (options?.all) {
+      return [{ address: resolvedIp, family: 4 }];
     }
-    return { address: '8.8.8.8' }; // Default to a public IP
+    return { address: resolvedIp, family: 4 };
   }),
 }));
 
@@ -86,6 +90,14 @@ describe('POST /api/recipes/extract (Gemini)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     process.env.GEMINI_API_KEY = 'test-gemini-api-key';
+
+    // vi.clearAllMocks()가 global.fetch 구현을 초기화하므로 매 테스트마다 기본 mock 복구
+    vi.mocked(global.fetch).mockResolvedValue({
+      ok: true,
+      status: 200,
+      text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
+      headers: new Headers(),
+    } as unknown as Response);
   });
 
   const createRequest = (body: unknown) => {
