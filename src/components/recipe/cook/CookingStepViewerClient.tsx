@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWakeLock } from '@/hooks/recipe/cook/useWakeLock';
 import { useTimers } from '@/hooks/recipe/cook/useTimers';
+import { useCookStore } from '@/store/useCookStore';
 
 import TimerPanel from '@/components/recipe/cook/TimerPanel';
 import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
@@ -18,7 +19,7 @@ interface CookingStepViewerClientProps {
 
 export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
+  const { currentStepIndex, setCurrentStepIndex } = useCookStore();
   const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
     useTimers();
 
