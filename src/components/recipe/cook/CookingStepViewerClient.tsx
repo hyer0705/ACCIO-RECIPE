@@ -20,7 +20,7 @@ interface CookingStepViewerClientProps {
 export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
   const { currentStepIndex, setCurrentStepIndex, resetCookState } = useCookStore();
-  const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
+  const { activeTimers, completedTimers, startTimer, toggleTimer, resetTimer, dismissModal } =
     useTimers();
 
   const { releaseWakeLock } = useWakeLock();
@@ -136,10 +136,10 @@ export default function CookingStepViewerClient({ recipeId, steps }: CookingStep
       </footer>
 
       {/* ── Timer Complete Modal ── */}
-      {completedTimer && (
+      {completedTimers[0] && (
         <TimerCompleteModal
-          stepOrder={completedTimer.stepOrder}
-          instruction={completedTimer.instruction}
+          stepOrder={completedTimers[0].stepOrder}
+          instruction={completedTimers[0].instruction}
           onConfirm={dismissModal}
         />
       )}

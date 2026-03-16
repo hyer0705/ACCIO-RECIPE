@@ -4,7 +4,7 @@ import { useCookStore } from '@/store/useCookStore';
 
 export function useTimers() {
   const { activeTimers, setActiveTimers } = useCookStore();
-  const [completedTimer, setCompletedTimer] = useState<ActiveTimer | null>(null);
+  const [completedTimers, setCompletedTimers] = useState<ActiveTimer[]>([]);
 
   // 1초마다 모든 실행 중인 타이머 감소
   useEffect(() => {
@@ -28,7 +28,7 @@ export function useTimers() {
 
         if (completed.length > 0) {
           const snapshot = completed.slice();
-          setTimeout(() => snapshot.forEach((t) => setCompletedTimer(t)), 0);
+          setTimeout(() => setCompletedTimers((prev) => [...prev, ...snapshot]), 0);
         }
         return updated;
       });
@@ -81,15 +81,18 @@ export function useTimers() {
   );
 
   const dismissModal = useCallback(() => {
-    if (completedTimer) {
-      setActiveTimers((prev) => prev.filter((t) => t.stepOrder !== completedTimer.stepOrder));
-    }
-    setCompletedTimer(null);
-  }, [completedTimer, setActiveTimers]);
+    setCompletedTimers((prev) => {
+      const [head, ...tail] = prev;
+      if (head) {
+        setActiveTimers((timers) => timers.filter((t) => t.stepOrder !== head.stepOrder));
+      }
+      return tail;
+    });
+  }, [setActiveTimers]);
 
   return {
     activeTimers,
-    completedTimer,
+    completedTimers,
     startTimer,
     toggleTimer,
     resetTimer,
