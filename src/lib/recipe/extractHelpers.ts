@@ -4,15 +4,32 @@ import { SYSTEM_PROMPT, GEMINI_SCHEMA, GEMINI_MODEL } from '@/lib/recipe/extract
 import { SSEWriter } from '@/lib/recipe/sse';
 
 // ── 유틸: Exponential Backoff 재시도 ──────────────────────────────────────────
-async function withRetry<T>(fn: () => Promise<T>, retries = 3, label = 'API'): Promise<T> {
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  label = 'API',
+  signal?: AbortSignal,
+): Promise<T> {
   for (let attempt = 1; attempt <= retries; attempt++) {
+    if (signal?.aborted) throw new Error('Aborted');
     try {
       return await fn();
     } catch (err) {
       if (attempt === retries) throw err;
       const delay = 1000 * 2 ** (attempt - 1); // 1s, 2s, 4s
       console.warn(`${label} 실패 (${attempt}/${retries}회), ${delay}ms 후 재시도...`);
-      await new Promise((res) => setTimeout(res, delay));
+
+      await new Promise<void>((res, rej) => {
+        const t = setTimeout(res, delay);
+        signal?.addEventListener(
+          'abort',
+          () => {
+            clearTimeout(t);
+            rej(new Error('Aborted'));
+          },
+          { once: true },
+        );
+      });
     }
   }
   throw new Error(`${label}: 최대 재시도 횟수 초과`);
@@ -21,6 +38,7 @@ async function withRetry<T>(fn: () => Promise<T>, retries = 3, label = 'API'): P
 // ── Gemini 호출 ────────────────────────────────────────────────────────────────
 async function callGemini(
   contents: Array<string | { fileData: { fileUri: string; mimeType: string } }>,
+  signal?: AbortSignal,
 ): Promise<string> {
   const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
   const response = await ai.models.generateContent({
@@ -31,6 +49,7 @@ async function callGemini(
       responseMimeType: 'application/json',
       responseSchema: GEMINI_SCHEMA,
       temperature: 0.1,
+      abortSignal: signal,
     },
   });
   if (!response.text) throw new Error('Gemini API did not return any content.');
@@ -107,7 +126,7 @@ export async function processExtraction(
     // 1. AI 호출 (Gemini 단일 경로)
     sse.write({ step: 2, total: 4, message: 'AI 셰프가 요리 과정을 분석 중입니다 👨‍🍳' });
     console.log(`[Recipe ${recipeId}] Gemini(${GEMINI_MODEL}) 호출 시작...`);
-    llmContent = await withRetry(() => callGemini(contentsToAnalyze), 3, 'Gemini');
+    llmContent = await withRetry(() => callGemini(contentsToAnalyze, signal), 3, 'Gemini', signal);
     console.log(`[Recipe ${recipeId}] Gemini 성공`);
 
     await checkAborted();
