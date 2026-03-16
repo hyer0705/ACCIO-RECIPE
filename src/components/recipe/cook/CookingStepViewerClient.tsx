@@ -47,11 +47,11 @@ export default function CookingStepViewerClient({ recipeId, steps }: CookingStep
   }, [currentStep, startTimer]);
 
   const nextStep = () => {
-    if (!isLastStep) setCurrentStepIndex((prev) => prev + 1);
+    if (!isLastStep) setCurrentStepIndex(Math.min(safeIndex + 1, steps.length - 1));
   };
 
   const prevStep = () => {
-    if (!isFirstStep) setCurrentStepIndex((prev) => prev - 1);
+    if (!isFirstStep) setCurrentStepIndex(Math.max(safeIndex - 1, 0));
   };
 
   const handleFinish = () => {
