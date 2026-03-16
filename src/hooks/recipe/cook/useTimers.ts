@@ -12,21 +12,23 @@ export function useTimers() {
 
     const interval = setInterval(() => {
       setActiveTimers((prev) => {
-        let justCompleted: ActiveTimer | null = null;
+        const completed: ActiveTimer[] = [];
 
         const updated = prev.map((t) => {
           if (!t.isRunning || t.timeLeft <= 0) return t;
 
           const next = t.timeLeft - 1;
           if (next === 0) {
-            justCompleted = { ...t, timeLeft: 0, isRunning: false };
-            return justCompleted;
+            const done = { ...t, timeLeft: 0, isRunning: false };
+            completed.push(done);
+            return done;
           }
           return { ...t, timeLeft: next };
         });
 
-        if (justCompleted) {
-          setTimeout(() => setCompletedTimer(justCompleted), 0);
+        if (completed.length > 0) {
+          const snapshot = completed.slice();
+          setTimeout(() => snapshot.forEach((t) => setCompletedTimer(t)), 0);
         }
         return updated;
       });

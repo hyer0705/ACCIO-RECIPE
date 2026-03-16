@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWakeLock } from '@/hooks/recipe/cook/useWakeLock';
 import { useTimers } from '@/hooks/recipe/cook/useTimers';
@@ -19,19 +19,28 @@ interface CookingStepViewerClientProps {
 
 export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
-  const { currentStepIndex, setCurrentStepIndex } = useCookStore();
+  const { currentStepIndex, setCurrentStepIndex, resetCookState } = useCookStore();
   const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
     useTimers();
 
   const { releaseWakeLock } = useWakeLock();
 
+  useEffect(() => {
+    resetCookState();
+    return () => {
+      resetCookState();
+    };
+  }, [recipeId, resetCookState]);
+
   // ── 현재 단계에 타이머가 있으면 타이머 목록에 추가 ────────────
-  const currentStep = steps[currentStepIndex];
-  const isLastStep = currentStepIndex === steps.length - 1;
-  const isFirstStep = currentStepIndex === 0;
+  const safeIndex =
+    steps.length > 0 ? Math.min(Math.max(0, currentStepIndex), steps.length - 1) : 0;
+  const currentStep = steps[safeIndex];
+  const isLastStep = steps.length > 0 && safeIndex === steps.length - 1;
+  const isFirstStep = safeIndex === 0;
 
   const handleStartTimer = useCallback(() => {
-    const seconds = currentStep.timer_seconds;
+    const seconds = currentStep?.timer_seconds;
     if (seconds && seconds > 0) {
       startTimer(currentStep.step_order, currentStep.instruction, seconds);
     }

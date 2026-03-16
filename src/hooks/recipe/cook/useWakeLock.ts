@@ -16,6 +16,7 @@ export function useWakeLock() {
         console.log('Screen Wake Lock is active.');
 
         wakeLockRef.current.onrelease = () => {
+          wakeLockRef.current = null;
           console.log('Screen Wake Lock was released.');
         };
       } else {
@@ -27,10 +28,14 @@ export function useWakeLock() {
   }, []);
 
   const releaseWakeLock = useCallback(() => {
-    if (wakeLockRef.current) {
+    if (!wakeLockRef.current || wakeLockRef.current.released) return;
+    try {
       wakeLockRef.current.release();
       wakeLockRef.current = null;
       console.log('Screen Wake Lock released manually.');
+    } catch (err) {
+      console.error('Failed to release Screen Wake Lock:', err);
+      wakeLockRef.current = null;
     }
   }, []);
 
