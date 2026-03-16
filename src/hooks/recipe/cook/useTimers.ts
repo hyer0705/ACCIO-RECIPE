@@ -100,14 +100,12 @@ export function useTimers() {
   );
 
   const dismissModal = useCallback(() => {
-    setCompletedTimers((prev) => {
-      const [head, ...tail] = prev;
-      if (head) {
-        setActiveTimers((timers) => timers.filter((t) => t.stepOrder !== head.stepOrder));
-      }
-      return tail;
-    });
-  }, [setActiveTimers]);
+    const [head, ...tail] = completedTimers;
+    setCompletedTimers(tail);
+    if (head) {
+      setActiveTimers((timers) => timers.filter((t) => t.stepOrder !== head.stepOrder));
+    }
+  }, [completedTimers, setActiveTimers]);
 
   return {
     activeTimers,
