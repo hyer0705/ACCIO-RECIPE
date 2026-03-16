@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useWakeLock } from '@/hooks/recipe/cook/useWakeLock';
 import { useTimers } from '@/hooks/recipe/cook/useTimers';
+import { useCookStore } from '@/store/useCookStore';
 
 import TimerPanel from '@/components/recipe/cook/TimerPanel';
 import TimerCompleteModal from '@/components/recipe/cook/TimerCompleteModal';
@@ -18,30 +19,50 @@ interface CookingStepViewerClientProps {
 
 export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const { activeTimers, completedTimer, startTimer, toggleTimer, resetTimer, dismissModal } =
-    useTimers();
+  const currentStepIndex = useCookStore((state) => state.currentStepIndex);
+  const setCurrentStepIndex = useCookStore((state) => state.setCurrentStepIndex);
+  const resetCookState = useCookStore((state) => state.resetCookState);
+  const {
+    activeTimers,
+    completedTimers,
+    startTimer,
+    toggleTimer,
+    resetTimer,
+    dismissModal,
+    resetSession,
+  } = useTimers();
 
   const { releaseWakeLock } = useWakeLock();
 
+  useEffect(() => {
+    resetCookState();
+    resetSession();
+    return () => {
+      resetCookState();
+      resetSession();
+    };
+  }, [recipeId, resetCookState, resetSession]);
+
   // ── 현재 단계에 타이머가 있으면 타이머 목록에 추가 ────────────
-  const currentStep = steps[currentStepIndex];
-  const isLastStep = currentStepIndex === steps.length - 1;
-  const isFirstStep = currentStepIndex === 0;
+  const safeIndex =
+    steps.length > 0 ? Math.min(Math.max(0, currentStepIndex), steps.length - 1) : 0;
+  const currentStep = steps[safeIndex];
+  const isLastStep = steps.length > 0 && safeIndex === steps.length - 1;
+  const isFirstStep = safeIndex === 0;
 
   const handleStartTimer = useCallback(() => {
-    const seconds = currentStep.timer_seconds;
+    const seconds = currentStep?.timer_seconds;
     if (seconds && seconds > 0) {
       startTimer(currentStep.step_order, currentStep.instruction, seconds);
     }
   }, [currentStep, startTimer]);
 
   const nextStep = () => {
-    if (!isLastStep) setCurrentStepIndex((prev) => prev + 1);
+    if (!isLastStep) setCurrentStepIndex(Math.min(safeIndex + 1, steps.length - 1));
   };
 
   const prevStep = () => {
-    if (!isFirstStep) setCurrentStepIndex((prev) => prev - 1);
+    if (!isFirstStep) setCurrentStepIndex(Math.max(safeIndex - 1, 0));
   };
 
   const handleFinish = () => {
@@ -126,10 +147,10 @@ export default function CookingStepViewerClient({ recipeId, steps }: CookingStep
       </footer>
 
       {/* ── Timer Complete Modal ── */}
-      {completedTimer && (
+      {completedTimers[0] && (
         <TimerCompleteModal
-          stepOrder={completedTimer.stepOrder}
-          instruction={completedTimer.instruction}
+          stepOrder={completedTimers[0].stepOrder}
+          instruction={completedTimers[0].instruction}
           onConfirm={dismissModal}
         />
       )}

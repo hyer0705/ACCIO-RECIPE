@@ -1,9 +1,25 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { ActiveTimer } from '@/types/timer';
+import { useCookStore } from '@/store/useCookStore';
 
 export function useTimers() {
-  const [activeTimers, setActiveTimers] = useState<ActiveTimer[]>([]);
-  const [completedTimer, setCompletedTimer] = useState<ActiveTimer | null>(null);
+  const { activeTimers, setActiveTimers } = useCookStore();
+  const [completedTimers, setCompletedTimers] = useState<ActiveTimer[]>([]);
+  const pendingTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  const resetSession = useCallback(() => {
+    pendingTimeoutsRef.current.forEach(clearTimeout);
+    pendingTimeoutsRef.current.clear();
+    setCompletedTimers([]);
+  }, []);
+
+  // 컴포넌트 언마운트 시 미결 타임아웃 정리
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach(clearTimeout);
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
 
   // 1초마다 모든 실행 중인 타이머 감소
   useEffect(() => {
@@ -11,76 +27,93 @@ export function useTimers() {
 
     const interval = setInterval(() => {
       setActiveTimers((prev) => {
-        let justCompleted: ActiveTimer | null = null;
+        const completed: ActiveTimer[] = [];
 
         const updated = prev.map((t) => {
           if (!t.isRunning || t.timeLeft <= 0) return t;
 
           const next = t.timeLeft - 1;
           if (next === 0) {
-            justCompleted = { ...t, timeLeft: 0, isRunning: false };
-            return justCompleted;
+            const done = { ...t, timeLeft: 0, isRunning: false };
+            completed.push(done);
+            return done;
           }
           return { ...t, timeLeft: next };
         });
 
-        if (justCompleted) {
-          setTimeout(() => setCompletedTimer(justCompleted), 0);
+        if (completed.length > 0) {
+          const snapshot = completed.slice();
+          const id = setTimeout(() => {
+            pendingTimeoutsRef.current.delete(id);
+            setCompletedTimers((prev) => [...prev, ...snapshot]);
+          }, 0);
+          pendingTimeoutsRef.current.add(id);
         }
         return updated;
       });
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [activeTimers]);
+  }, [activeTimers.length, setActiveTimers]);
 
-  const startTimer = useCallback((stepOrder: number, instruction: string, seconds: number) => {
-    if (!seconds || seconds <= 0) return;
+  const startTimer = useCallback(
+    (stepOrder: number, instruction: string, seconds: number) => {
+      if (!seconds || seconds <= 0) return;
 
-    setActiveTimers((prev) => {
-      const exists = prev.find((t) => t.stepOrder === stepOrder);
-      if (exists) return prev; // 중복 방지
+      setActiveTimers((prev) => {
+        const exists = prev.find((t) => t.stepOrder === stepOrder);
+        if (exists) return prev; // 중복 방지
 
-      return [
-        ...prev,
-        {
-          stepOrder,
-          instruction,
-          initialSeconds: seconds,
-          timeLeft: seconds,
-          isRunning: true,
-        },
-      ];
-    });
-  }, []);
+        return [
+          ...prev,
+          {
+            stepOrder,
+            instruction,
+            initialSeconds: seconds,
+            timeLeft: seconds,
+            isRunning: true,
+          },
+        ];
+      });
+    },
+    [setActiveTimers],
+  );
 
-  const toggleTimer = useCallback((stepOrder: number) => {
-    setActiveTimers((prev) =>
-      prev.map((t) => (t.stepOrder === stepOrder ? { ...t, isRunning: !t.isRunning } : t)),
-    );
-  }, []);
+  const toggleTimer = useCallback(
+    (stepOrder: number) => {
+      setActiveTimers((prev) =>
+        prev.map((t) => (t.stepOrder === stepOrder ? { ...t, isRunning: !t.isRunning } : t)),
+      );
+    },
+    [setActiveTimers],
+  );
 
-  const resetTimer = useCallback((stepOrder: number) => {
-    setActiveTimers((prev) =>
-      prev.map((t) =>
-        t.stepOrder === stepOrder ? { ...t, timeLeft: t.initialSeconds, isRunning: false } : t,
-      ),
-    );
-  }, []);
+  const resetTimer = useCallback(
+    (stepOrder: number) => {
+      setActiveTimers((prev) =>
+        prev.map((t) =>
+          t.stepOrder === stepOrder ? { ...t, timeLeft: t.initialSeconds, isRunning: false } : t,
+        ),
+      );
+    },
+    [setActiveTimers],
+  );
 
   const dismissModal = useCallback(() => {
-    if (completedTimer) {
-      setActiveTimers((prev) => prev.filter((t) => t.stepOrder !== completedTimer.stepOrder));
+    const [head, ...tail] = completedTimers;
+    setCompletedTimers(tail);
+    if (head) {
+      setActiveTimers((timers) => timers.filter((t) => t.stepOrder !== head.stepOrder));
     }
-    setCompletedTimer(null);
-  }, [completedTimer]);
+  }, [completedTimers, setActiveTimers]);
 
   return {
     activeTimers,
-    completedTimer,
+    completedTimers,
     startTimer,
     toggleTimer,
     resetTimer,
     dismissModal,
+    resetSession,
   };
 }
