@@ -1,9 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import prisma from '@/lib/prisma';
-import { SYSTEM_PROMPT, GEMINI_SCHEMA } from '@/lib/recipe/extractPrompts';
+import { SYSTEM_PROMPT, GEMINI_SCHEMA, GEMINI_MODEL } from '@/lib/recipe/extractPrompts';
 import { SSEWriter } from '@/lib/recipe/sse';
-
-const GEMINI_MODEL = process.env.GEMINI_MODEL ?? 'gemini-3.1-flash-lite-preview';
 
 // ── 유틸: Exponential Backoff 재시도 ──────────────────────────────────────────
 async function withRetry<T>(fn: () => Promise<T>, retries = 3, label = 'API'): Promise<T> {

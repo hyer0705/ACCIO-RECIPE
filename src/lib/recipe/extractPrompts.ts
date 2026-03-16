@@ -1,5 +1,7 @@
 import { Type, Schema } from '@google/genai';
 
+export const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite-preview';
+
 // ── 공통 프롬프트 ──────────────────────────────────────────────────────────────
 export const SYSTEM_PROMPT = `너는 최고의 요리 전문가이자 레시피 구조화 AI야. 주어진 동영상이나 텍스트를 보고 오직 '요리 레시피'와 관련된 필수 정보(제목, 난이도, 몇인분, 재료, 스텝)만 정확하게 추출해야 해.
 
