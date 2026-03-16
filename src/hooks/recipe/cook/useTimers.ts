@@ -1,10 +1,25 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { ActiveTimer } from '@/types/timer';
 import { useCookStore } from '@/store/useCookStore';
 
 export function useTimers() {
   const { activeTimers, setActiveTimers } = useCookStore();
   const [completedTimers, setCompletedTimers] = useState<ActiveTimer[]>([]);
+  const pendingTimeoutsRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+
+  const resetSession = useCallback(() => {
+    pendingTimeoutsRef.current.forEach(clearTimeout);
+    pendingTimeoutsRef.current.clear();
+    setCompletedTimers([]);
+  }, []);
+
+  // 컴포넌트 언마운트 시 미결 타임아웃 정리
+  useEffect(() => {
+    return () => {
+      pendingTimeoutsRef.current.forEach(clearTimeout);
+      pendingTimeoutsRef.current.clear();
+    };
+  }, []);
 
   // 1초마다 모든 실행 중인 타이머 감소
   useEffect(() => {
@@ -28,7 +43,11 @@ export function useTimers() {
 
         if (completed.length > 0) {
           const snapshot = completed.slice();
-          setTimeout(() => setCompletedTimers((prev) => [...prev, ...snapshot]), 0);
+          const id = setTimeout(() => {
+            pendingTimeoutsRef.current.delete(id);
+            setCompletedTimers((prev) => [...prev, ...snapshot]);
+          }, 0);
+          pendingTimeoutsRef.current.add(id);
         }
         return updated;
       });
@@ -97,5 +116,6 @@ export function useTimers() {
     toggleTimer,
     resetTimer,
     dismissModal,
+    resetSession,
   };
 }

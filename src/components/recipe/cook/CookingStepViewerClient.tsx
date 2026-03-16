@@ -22,17 +22,26 @@ export default function CookingStepViewerClient({ recipeId, steps }: CookingStep
   const currentStepIndex = useCookStore((state) => state.currentStepIndex);
   const setCurrentStepIndex = useCookStore((state) => state.setCurrentStepIndex);
   const resetCookState = useCookStore((state) => state.resetCookState);
-  const { activeTimers, completedTimers, startTimer, toggleTimer, resetTimer, dismissModal } =
-    useTimers();
+  const {
+    activeTimers,
+    completedTimers,
+    startTimer,
+    toggleTimer,
+    resetTimer,
+    dismissModal,
+    resetSession,
+  } = useTimers();
 
   const { releaseWakeLock } = useWakeLock();
 
   useEffect(() => {
     resetCookState();
+    resetSession();
     return () => {
       resetCookState();
+      resetSession();
     };
-  }, [recipeId, resetCookState]);
+  }, [recipeId, resetCookState, resetSession]);
 
   // ── 현재 단계에 타이머가 있으면 타이머 목록에 추가 ────────────
   const safeIndex =
