@@ -19,7 +19,9 @@ interface CookingStepViewerClientProps {
 
 export default function CookingStepViewerClient({ recipeId, steps }: CookingStepViewerClientProps) {
   const router = useRouter();
-  const { currentStepIndex, setCurrentStepIndex, resetCookState } = useCookStore();
+  const currentStepIndex = useCookStore((state) => state.currentStepIndex);
+  const setCurrentStepIndex = useCookStore((state) => state.setCurrentStepIndex);
+  const resetCookState = useCookStore((state) => state.resetCookState);
   const { activeTimers, completedTimers, startTimer, toggleTimer, resetTimer, dismissModal } =
     useTimers();
 
