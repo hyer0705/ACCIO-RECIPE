@@ -82,7 +82,7 @@ describe('GET /api/cooking-logs', () => {
 // PUT /api/cooking-logs/[log_id]
 // ─────────────────────────────────────────────
 describe('PUT /api/cooking-logs/[log_id]', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -153,7 +153,7 @@ describe('PUT /api/cooking-logs/[log_id]', () => {
 // DELETE /api/cooking-logs/[log_id]
 // ─────────────────────────────────────────────
 describe('DELETE /api/cooking-logs/[log_id]', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   const makeDeleteReq = () =>
     new Request('http://localhost/api/cooking-logs/1', { method: 'DELETE' });

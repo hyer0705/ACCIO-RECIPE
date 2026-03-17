@@ -40,7 +40,7 @@ const mockParams = (itemId: string) => ({
 });
 
 describe('GET /api/fridge', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   test('세션 없으면 401 반환', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -91,7 +91,7 @@ describe('GET /api/fridge', () => {
 });
 
 describe('PUT /api/fridge/[item_id]', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   const makeReq = (body: unknown) =>
     new Request('http://localhost/api/fridge/1', {
@@ -156,7 +156,7 @@ describe('PUT /api/fridge/[item_id]', () => {
 });
 
 describe('DELETE /api/fridge/[item_id]', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => vi.resetAllMocks());
 
   const makeReq = () => new Request('http://localhost/api/fridge/1', { method: 'DELETE' });
 

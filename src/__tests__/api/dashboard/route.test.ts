@@ -90,7 +90,7 @@ function setHappyPath() {
 
 describe('GET /api/dashboard', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
+    vi.resetAllMocks();
   });
 
   // ── 인증 ──────────────────────────────────
@@ -162,6 +162,7 @@ describe('GET /api/dashboard', () => {
     mockLogsCount.mockResolvedValueOnce(0);
     mockFridgeFind.mockResolvedValueOnce([]);
     mockLogsFindFirst.mockResolvedValueOnce(null);
+    mockRecipesFind.mockResolvedValueOnce([]);
 
     const res = await GET();
     const body = await res.json();
@@ -215,6 +216,7 @@ describe('GET /api/dashboard', () => {
     mockLogsCount.mockResolvedValueOnce(9);
     mockFridgeFind.mockResolvedValueOnce([]);
     mockLogsFindFirst.mockResolvedValueOnce(null);
+    mockRecipesFind.mockResolvedValueOnce([]);
 
     const res = await GET();
     const body = await res.json();
@@ -230,6 +232,7 @@ describe('GET /api/dashboard', () => {
     mockLogsCount.mockResolvedValueOnce(0);
     mockFridgeFind.mockResolvedValueOnce([]);
     mockLogsFindFirst.mockResolvedValueOnce(null);
+    mockRecipesFind.mockResolvedValueOnce([]);
 
     const res = await GET();
     const body = await res.json();
