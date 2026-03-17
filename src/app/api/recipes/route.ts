@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
-import prisma from '@/lib/prisma';
+import * as recipeService from '@/services/recipeService';
 
 /**
  * @swagger
@@ -77,64 +77,12 @@ export async function GET() {
     }
 
     const userId = parseInt(session.user.id as string, 10);
-
-    // 레시피 목록 + 각 레시피별 최신 로그 1개
-    const [recipes, allLogs] = await Promise.all([
-      prisma.recipes.findMany({
-        where: {
-          user_id: userId,
-          status: 'COMPLETED',
-        },
-        select: {
-          recipe_id: true,
-          title: true,
-          thumbnail_url: true,
-          difficulty: true,
-          servings: true,
-          created_at: true,
-          cooking_logs: {
-            orderBy: { cooked_at: 'desc' },
-            take: 1,
-            select: {
-              log_id: true,
-              status: true,
-              lesson_note: true,
-              cooked_at: true,
-            },
-          },
-        },
-        orderBy: { created_at: 'desc' },
-      }),
-      // 전체 누적 통계용 로그
-      prisma.cooking_logs.findMany({
-        where: { user_id: userId },
-        select: { status: true },
-      }),
-    ]);
-
-    // 전체 누적 성공률
-    const totalCount = allLogs.length;
-    const successCount = allLogs.filter((l) => l.status === 'SUCCESS').length;
-    const overallSuccessRate =
-      totalCount > 0 ? Math.round((successCount / totalCount) * 100) : null;
-
-    const data = recipes.map((r) => ({
-      recipe_id: r.recipe_id,
-      title: r.title,
-      thumbnail_url: r.thumbnail_url,
-      difficulty: r.difficulty,
-      servings: r.servings,
-      created_at: r.created_at,
-      latest_log: r.cooking_logs[0] ?? null,
-    }));
+    const result = await recipeService.getRecipesByUser(userId);
 
     return NextResponse.json({
       success: true,
-      stats: {
-        total_cooking_count: totalCount,
-        overall_success_rate: overallSuccessRate,
-      },
-      data,
+      stats: result.stats,
+      data: result.data,
     });
   } catch (error: unknown) {
     console.error('GET /api/recipes Error:', error);
@@ -253,7 +201,6 @@ export async function POST(req: Request) {
     const userId = parseInt(session.user.id as string, 10);
     const body = await req.json();
 
-    // 입력값 검증 (Manual Validation)
     if (!body || typeof body !== 'object') {
       return NextResponse.json(
         { success: false, message: '잘못된 요청 형식입니다.' },
@@ -261,16 +208,12 @@ export async function POST(req: Request) {
       );
     }
 
-    const { title, servings = 1, difficulty, source_url, thumbnail_url, ingredients, steps } = body;
-
+    const { title, ingredients, steps } = body;
     const errors: string[] = [];
 
-    // 제목 검증
     if (!title || typeof title !== 'string' || title.trim() === '') {
       errors.push('레시피 제목(title)이 필요합니다.');
     }
-
-    // 재료 구조 검증
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
       errors.push('최소 1개 이상의 재료(ingredients)가 필요합니다.');
     } else {
@@ -280,8 +223,6 @@ export async function POST(req: Request) {
         }
       });
     }
-
-    // 단계 구조 검증
     if (!Array.isArray(steps) || steps.length === 0) {
       errors.push('최소 1개 이상의 조리 순서(steps)가 필요합니다.');
     } else {
@@ -299,7 +240,6 @@ export async function POST(req: Request) {
       });
     }
 
-    // 에러가 있다면 400 Bad Request
     if (errors.length > 0) {
       return NextResponse.json(
         { success: false, message: '잘못된 입력 데이터입니다.', errors },
@@ -307,110 +247,35 @@ export async function POST(req: Request) {
       );
     }
 
-    const { recipe_id } = body;
-
-    if (recipe_id) {
-      // 1. 기존 PENDING(또는 이미 존재하는) 레시피 업데이트 (Upsert)
-      // 상태를 COMPLETED로 변경하고, 프론트엔드에서 수정한 재료/순서를 덮어씁니다.
-      const updatedRecipe = await prisma.$transaction(async (tx) => {
-        const recipe = await tx.recipes.update({
-          where: { recipe_id },
-          data: {
-            user_id: userId,
-            title: title.trim(),
-            servings: servings,
-            difficulty: difficulty || null,
-            source_url: source_url || null,
-            thumbnail_url: thumbnail_url || null,
-            status: 'COMPLETED',
-          },
-          select: { recipe_id: true, title: true },
-        });
-
-        // 기존 재료, 순서 일괄 삭제 후 재삽입
-        await tx.recipe_ingredients.deleteMany({ where: { recipe_id } });
-        if (ingredients.length > 0) {
-          await tx.recipe_ingredients.createMany({
-            data: ingredients.map((ing: IngredientInput) => ({
-              recipe_id,
-              name: ing.name.trim(),
-              amount: ing.amount !== undefined ? ing.amount : null,
-              unit: ing.unit ? ing.unit.trim() : null,
-            })),
-          });
-        }
-
-        await tx.recipe_steps.deleteMany({ where: { recipe_id } });
-        if (steps.length > 0) {
-          await tx.recipe_steps.createMany({
-            data: steps.map((step: StepInput) => ({
-              recipe_id,
-              step_order: step.step_order,
-              instruction: step.instruction.trim(),
-              timer_seconds: step.timer_seconds || 0,
-              step_image_url: step.step_image_url || null,
-              step_ingredients: step.step_ingredients ?? [],
-            })),
-          });
-        }
-
-        return recipe;
-      });
-
-      return NextResponse.json(
-        {
-          success: true,
-          message: '레시피가 성공적으로 업데이트 되었습니다.',
-          data: updatedRecipe,
-        },
-        { status: 200 },
-      );
+    let recipe;
+    try {
+      recipe = await recipeService.upsertRecipe(userId, body);
+    } catch (e: unknown) {
+      const error = e as Error;
+      if (error.message === 'NOT_FOUND') {
+        return NextResponse.json(
+          { success: false, message: '존재하지 않는 레시피입니다.' },
+          { status: 404 },
+        );
+      }
+      if (error.message === 'FORBIDDEN') {
+        return NextResponse.json(
+          { success: false, message: '수정 권한이 없습니다.' },
+          { status: 403 },
+        );
+      }
+      throw error;
     }
-
-    /**
-     * Prisma Transaction (Nested Writes)
-     * recipes 생성하면서 recipe_ingredients와 recipe_steps까지 한 번에 Insert!
-     * Prisma의 경우 관계(Relation)를 지어서 'create' 안에 배열로 넣으면
-     * 내부적으로 트랜잭션 처리되어 부모 ID를 자식 키에 자동으로 맵핑하여 넣어줍니다.
-     */
-    const newRecipe = await prisma.recipes.create({
-      data: {
-        user_id: userId,
-        title: title.trim(),
-        servings: servings,
-        difficulty: difficulty || null,
-        source_url: source_url || null,
-        thumbnail_url: thumbnail_url || null,
-        recipe_ingredients: {
-          create: ingredients.map((ing: IngredientInput) => ({
-            name: ing.name.trim(),
-            amount: ing.amount !== undefined ? ing.amount : null,
-            unit: ing.unit ? ing.unit.trim() : null,
-            // 추후 master_id 연결을 위해 Ingredients Master 검색 로직을 추가할 수 있습니다.
-          })),
-        },
-        recipe_steps: {
-          create: steps.map((step: StepInput) => ({
-            step_order: step.step_order,
-            instruction: step.instruction.trim(),
-            timer_seconds: step.timer_seconds || 0,
-            step_image_url: step.step_image_url || null,
-          })),
-        },
-      },
-      select: {
-        recipe_id: true,
-        title: true,
-      },
-    });
 
     return NextResponse.json(
       {
         success: true,
-        message: '레시피가 성공적으로 등록되었습니다.',
-        data: newRecipe,
+        message: body.recipe_id
+          ? '레시피가 성공적으로 업데이트 되었습니다.'
+          : '레시피가 성공적으로 등록되었습니다.',
+        data: recipe,
       },
-      { status: 201 },
+      { status: body.recipe_id ? 200 : 201 },
     );
   } catch (error: unknown) {
     console.error('Create Recipe POST API Error:', error);

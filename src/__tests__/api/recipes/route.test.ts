@@ -15,8 +15,8 @@ vi.mock('next-auth', () => ({
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockRecipesCreate } = vi.hoisted(() => {
-  return { mockRecipesCreate: vi.fn() };
+const { mockRecipesCreate, mockTransaction } = vi.hoisted(() => {
+  return { mockRecipesCreate: vi.fn(), mockTransaction: vi.fn() };
 });
 
 vi.mock('@/lib/prisma', () => ({
@@ -24,6 +24,7 @@ vi.mock('@/lib/prisma', () => ({
     recipes: {
       create: mockRecipesCreate,
     },
+    $transaction: mockTransaction,
   },
 }));
 
@@ -180,6 +181,33 @@ describe('POST /api/recipes', () => {
     expect(callArg.data.difficulty).toBe('Easy');
     expect(callArg.data.recipe_ingredients.create).toHaveLength(2);
     expect(callArg.data.recipe_steps.create).toHaveLength(2);
+  });
+
+  test('다른 사용자의 레시피 수정 시 403을 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockTransaction.mockImplementationOnce(async (callback) =>
+      callback({
+        recipes: {
+          findUnique: vi.fn().mockResolvedValue({ user_id: 2 }),
+          update: vi.fn(),
+        },
+        recipe_ingredients: {
+          deleteMany: vi.fn(),
+          createMany: vi.fn(),
+        },
+        recipe_steps: {
+          deleteMany: vi.fn(),
+          createMany: vi.fn(),
+        },
+      }),
+    );
+
+    const res = await POST(createRequest({ ...VALID_BODY, recipe_id: 7 }));
+    const data = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(data.success).toBe(false);
+    expect(data.message).toBe('수정 권한이 없습니다.');
   });
 
   // ── 서버 에러 ─────────────────────────────

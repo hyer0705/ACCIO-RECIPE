@@ -160,6 +160,16 @@ describe('POST /api/fridge', () => {
     expect(data.errors).toContain('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
   });
 
+  test('expiry_date가 존재하지 않는 달력 날짜이면 400을 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const res = await POST(createRequest({ name: '대파', expiry_date: '2026-02-31' }));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.errors).toContain('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+  });
+
   test('expiry_date가 과거 날짜이면 400을 반환한다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
 
@@ -219,7 +229,11 @@ describe('POST /api/fridge', () => {
     await POST(createRequest({ name: '대파', expiry_date: tomorrow }));
 
     const callArg = mockFridgeCreate.mock.calls[0][0];
-    expect(callArg.data.expiry_date).toEqual(new Date(tomorrow));
+    expect(callArg.data.expiry_date).toBeInstanceOf(Date);
+    expect(callArg.data.expiry_date.getFullYear()).toBe(Number(tomorrow.slice(0, 4)));
+    expect(callArg.data.expiry_date.getMonth()).toBe(Number(tomorrow.slice(5, 7)) - 1);
+    expect(callArg.data.expiry_date.getDate()).toBe(Number(tomorrow.slice(8, 10)));
+    expect(callArg.data.expiry_date.getHours()).toBe(0);
   });
 
   test('expiry_date 미입력 + 마스터 있음: base_shelf_life로 자동 계산한다', async () => {
@@ -298,6 +312,7 @@ describe('POST /api/fridge', () => {
     expect(data.success).toBe(true);
     expect(data.message).toBe('식재료가 성공적으로 추가되었습니다.');
     expect(data.data.item_id).toBe(1);
+    expect(data.data.expiry_date).toBe('2026-03-05');
   });
 
   test('정상 요청 시 user_id가 세션 id로 올바르게 전달된다', async () => {
