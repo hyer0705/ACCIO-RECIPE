@@ -53,11 +53,18 @@ export async function PUT(req: Request, context: RouteContext) {
       );
     }
 
-    const updated = await cookingLogService.updateCookingLog(
-      logId,
-      userId,
-      body as unknown as Partial<cookingLogService.CreateCookingLogData>,
-    );
+    const validatedData: Partial<cookingLogService.CreateCookingLogData> = {};
+    if (body.status !== undefined) {
+      validatedData.status = body.status as cooking_logs_status;
+    }
+    if (body.lesson_note !== undefined) {
+      validatedData.lesson_note = body.lesson_note as string;
+    }
+    if (body.companion !== undefined) {
+      validatedData.companion = body.companion as string;
+    }
+
+    const updated = await cookingLogService.updateCookingLog(logId, userId, validatedData);
     return NextResponse.json({
       success: true,
       message: '요리 기록이 수정되었습니다.',

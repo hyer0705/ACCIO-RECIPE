@@ -66,7 +66,7 @@ describe('POST /api/auth/signup', () => {
     const json = await response.json();
 
     expect(response.status).toBe(401);
-    expect(json.error).toBe('Unauthorized. Please login with a social provider first.');
+    expect(json.error).toBe('인증이 필요합니다.');
   });
 
   it('[실패] 필수 파라미터 누락 시 400 반환', async () => {

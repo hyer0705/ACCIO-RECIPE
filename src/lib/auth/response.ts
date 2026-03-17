@@ -6,16 +6,22 @@ interface AccessErrorResponseOptions {
   includeSuccess?: boolean;
 }
 
+export interface AccessControlErrorResponseBody {
+  success?: false;
+  message?: string;
+  error?: string;
+}
+
 export function toAccessControlErrorResponse(
   error: unknown,
   options: AccessErrorResponseOptions = {},
-) {
+): NextResponse<AccessControlErrorResponseBody> | null {
   if (!isAccessControlError(error)) {
     return null;
   }
 
   const { key = 'message', includeSuccess = key === 'message' } = options;
-  const body: Record<string, boolean | string> = {
+  const body: AccessControlErrorResponseBody = {
     [key]: error.message,
   };
 

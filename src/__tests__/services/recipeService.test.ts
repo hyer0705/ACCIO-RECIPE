@@ -42,8 +42,18 @@ describe('recipeService', () => {
       expect(prisma.recipes.create).toHaveBeenCalledTimes(1);
 
       const callArg = vi.mocked(prisma.recipes.create).mock.calls[0][0];
+      const recipeIngredients = callArg.data.recipe_ingredients;
+
+      if (
+        !recipeIngredients ||
+        !('create' in recipeIngredients) ||
+        !Array.isArray(recipeIngredients.create)
+      ) {
+        throw new Error('Expected prisma.recipes.create to receive recipe_ingredients.create.');
+      }
+
       expect(callArg.data.title).toBe('파스타');
-      expect(callArg.data.recipe_ingredients.create).toEqual([
+      expect(recipeIngredients.create).toEqual([
         { name: '설탕', amount: 1.5, unit: 'tsp' },
         { name: '우유', amount: null, unit: 'ml' },
         { name: '소금', amount: null, unit: null },

@@ -178,8 +178,8 @@ export async function GET() {
  */
 interface IngredientInput {
   name: string;
-  amount?: number;
-  unit?: string;
+  amount?: number | null;
+  unit?: string | null;
 }
 
 interface StepInput {

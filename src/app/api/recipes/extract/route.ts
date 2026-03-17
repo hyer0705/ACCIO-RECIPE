@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   } catch (error: unknown) {
     const accessErrorResponse = toAccessControlErrorResponse(error, {
       key: 'error',
-      includeSuccess: false,
+      includeSuccess: true,
     });
     if (accessErrorResponse) {
       return accessErrorResponse;

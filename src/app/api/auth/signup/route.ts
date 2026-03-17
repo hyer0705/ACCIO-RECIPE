@@ -11,9 +11,7 @@ import * as authService from '@/services/authService';
  */
 export async function POST(req: NextRequest) {
   try {
-    const { userId } = await requireSessionUser(
-      'Unauthorized. Please login with a social provider first.',
-    );
+    const { userId } = await requireSessionUser();
 
     const { nickname, terms_agreements } = await req.json();
 

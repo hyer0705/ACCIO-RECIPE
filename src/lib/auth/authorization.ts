@@ -6,7 +6,7 @@ interface OwnershipMessages {
   forbiddenMessage: string;
 }
 
-async function assertOwnership(
+function assertOwnership(
   ownerUserId: number | null | undefined,
   currentUserId: number,
   messages: OwnershipMessages,
@@ -30,7 +30,7 @@ export async function assertRecipeOwner(
     select: { user_id: true },
   });
 
-  await assertOwnership(recipe?.user_id, userId, {
+  assertOwnership(recipe?.user_id, userId, {
     notFoundMessage: '존재하지 않는 레시피입니다.',
     forbiddenMessage: '접근 권한이 없습니다.',
     ...messages,
@@ -47,7 +47,7 @@ export async function assertFridgeItemOwner(
     select: { user_id: true },
   });
 
-  await assertOwnership(item?.user_id, userId, {
+  assertOwnership(item?.user_id, userId, {
     notFoundMessage: '존재하지 않는 재료입니다.',
     forbiddenMessage: '접근 권한이 없습니다.',
     ...messages,
@@ -64,7 +64,7 @@ export async function assertCookingLogOwner(
     select: { user_id: true },
   });
 
-  await assertOwnership(log?.user_id, userId, {
+  assertOwnership(log?.user_id, userId, {
     notFoundMessage: '존재하지 않는 요리 기록입니다.',
     forbiddenMessage: '접근 권한이 없습니다.',
     ...messages,

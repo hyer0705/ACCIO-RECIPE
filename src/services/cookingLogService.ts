@@ -1,5 +1,6 @@
 import prisma from '@/lib/prisma';
 import { assertCookingLogOwner } from '@/lib/auth/authorization';
+import { notFound } from '@/lib/auth/errors';
 import { cooking_logs_status } from '@/generated/client/enums';
 
 export interface CreateCookingLogData {
@@ -83,6 +84,10 @@ export async function createCookingLog(userId: number, data: CreateCookingLogDat
  * 요리 기록 상세 조회
  */
 export async function getCookingLogDetail(logId: number, userId: number) {
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '조회 권한이 없습니다.',
+  });
+
   const log = await prisma.cooking_logs.findUnique({
     where: { log_id: logId },
     include: {
@@ -92,8 +97,8 @@ export async function getCookingLogDetail(logId: number, userId: number) {
     },
   });
 
-  if (!log || log.user_id !== userId) {
-    return null;
+  if (!log) {
+    throw notFound('존재하지 않는 요리 기록입니다.');
   }
 
   return {

@@ -5,19 +5,12 @@ import { assertRecipeOwner } from '@/lib/auth/authorization';
 import { SYSTEM_PROMPT, GEMINI_SCHEMA } from '@/lib/recipe/extractPrompts';
 import { SSEWriter } from '@/lib/recipe/sse';
 import { validateSafeUrl, fetchWithSsrfProtection } from '@/lib/security';
+import { DraftIngredient, DraftStep } from '@/types/recipe';
 
-interface ExtractionIngredient {
+interface RecipeIngredientData {
   name: string;
-  amount: number | string;
-  unit?: string;
-}
-
-interface ExtractionStep {
-  step_order: number;
-  instruction: string;
-  timer_seconds?: number;
-  step_image_url?: string | null;
-  step_ingredients?: ExtractionIngredient[];
+  amount: number | null;
+  unit: string | null;
 }
 
 export const GEMINI_MODEL = process.env.GEMINI_MODEL?.trim() || 'gemini-3.1-flash-lite-preview';
@@ -114,6 +107,20 @@ function normalizeAmount(raw: unknown): number | null {
   return null;
 }
 
+function toRecipeIngredientData(ingredient: DraftIngredient): RecipeIngredientData {
+  return {
+    name: ingredient.name.trim(),
+    amount: normalizeAmount(ingredient.amount),
+    unit: ingredient.unit?.trim() || null,
+  };
+}
+
+function toRecipeStepIngredients(
+  ingredients?: DraftIngredient[],
+): Array<{ name: string; amount: number | null; unit: string | null }> {
+  return ingredients?.map(toRecipeIngredientData) ?? [];
+}
+
 // ── 레시피 추출 프로세스 ───────────────────────────────────────────────────────
 export async function processExtraction(
   recipeId: number,
@@ -166,29 +173,21 @@ export async function processExtraction(
 
       if (recipeData.ingredients?.length > 0) {
         await tx.recipe_ingredients.createMany({
-          data: (recipeData.ingredients as ExtractionIngredient[]).map((ing) => ({
+          data: (recipeData.ingredients as DraftIngredient[]).map((ing) => ({
             recipe_id: recipeId,
-            name: ing.name,
-            amount: normalizeAmount(ing.amount),
-            unit: ing.unit || null,
+            ...toRecipeIngredientData(ing),
           })),
         });
       }
 
       if (recipeData.steps?.length > 0) {
         await tx.recipe_steps.createMany({
-          data: (recipeData.steps as ExtractionStep[]).map((step) => ({
+          data: (recipeData.steps as DraftStep[]).map((step) => ({
             recipe_id: recipeId,
             step_order: step.step_order,
             instruction: step.instruction,
             timer_seconds: step.timer_seconds || 0,
-            step_ingredients: step.step_ingredients
-              ? step.step_ingredients.map((ing) => ({
-                  name: ing.name,
-                  amount: normalizeAmount(ing.amount),
-                  unit: ing.unit || null,
-                }))
-              : [],
+            step_ingredients: toRecipeStepIngredients(step.step_ingredients),
           })),
         });
       }
@@ -346,8 +345,8 @@ export interface UpsertRecipeBody {
   difficulty?: 'Easy' | 'Medium' | 'Hard' | null;
   source_url?: string | null;
   thumbnail_url?: string | null;
-  ingredients: ExtractionIngredient[];
-  steps: ExtractionStep[];
+  ingredients: DraftIngredient[];
+  steps: DraftStep[];
 }
 
 // ── 레시피 생성/업데이트 ───────────────────────────────────────────────────────
@@ -386,11 +385,9 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
       await tx.recipe_ingredients.deleteMany({ where: { recipe_id } });
       if (ingredients.length > 0) {
         await tx.recipe_ingredients.createMany({
-          data: (ingredients as ExtractionIngredient[]).map((ing) => ({
+          data: ingredients.map((ing) => ({
             recipe_id,
-            name: ing.name.trim(),
-            amount: normalizeAmount(ing.amount),
-            unit: ing.unit ? ing.unit.trim() : null,
+            ...toRecipeIngredientData(ing),
           })),
         });
       }
@@ -398,14 +395,13 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
       await tx.recipe_steps.deleteMany({ where: { recipe_id } });
       if (steps.length > 0) {
         await tx.recipe_steps.createMany({
-          data: (steps as ExtractionStep[]).map((step) => ({
+          data: steps.map((step) => ({
             recipe_id,
             step_order: step.step_order,
             instruction: step.instruction.trim(),
             timer_seconds: step.timer_seconds || 0,
             step_image_url: step.step_image_url || null,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            step_ingredients: step.step_ingredients ? (step.step_ingredients as any) : [],
+            step_ingredients: toRecipeStepIngredients(step.step_ingredients),
           })),
         });
       }
@@ -423,20 +419,15 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
       source_url: source_url || null,
       thumbnail_url: thumbnail_url || null,
       recipe_ingredients: {
-        create: (ingredients as ExtractionIngredient[]).map((ing) => ({
-          name: ing.name.trim(),
-          amount: normalizeAmount(ing.amount),
-          unit: ing.unit ? ing.unit.trim() : null,
-        })),
+        create: ingredients.map(toRecipeIngredientData),
       },
       recipe_steps: {
-        create: (steps as ExtractionStep[]).map((step) => ({
+        create: steps.map((step) => ({
           step_order: step.step_order,
           instruction: step.instruction.trim(),
           timer_seconds: step.timer_seconds || 0,
           step_image_url: step.step_image_url || null,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          step_ingredients: step.step_ingredients ? (step.step_ingredients as any) : [],
+          step_ingredients: toRecipeStepIngredients(step.step_ingredients),
         })),
       },
     },

@@ -100,8 +100,12 @@ describe('fridgeService', () => {
         }),
       );
 
-      const createArg = vi.mocked(prisma.fridge_items.create).mock.calls[0][0];
-      const expiryDate = createArg.data.expiry_date as Date;
+      const createArg = vi.mocked(prisma.fridge_items.create).mock.calls[0]?.[0];
+      if (!(createArg?.data?.expiry_date instanceof Date)) {
+        throw new Error('Expected prisma.fridge_items.create to receive a Date expiry_date.');
+      }
+
+      const expiryDate = createArg.data.expiry_date;
 
       expect(expiryDate.getFullYear()).toBe(2026);
       expect(expiryDate.getMonth()).toBe(2);
