@@ -162,5 +162,30 @@ describe('recipeService', () => {
 
       expect(recipe).toBeNull();
     });
+
+    test('recipe.servings가 0 이하면 1로 보정해 배율 계산한다', async () => {
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue({
+        recipe_id: 7,
+        user_id: 1,
+        title: '된장찌개',
+        source_url: null,
+        thumbnail_url: null,
+        difficulty: 'Easy',
+        servings: 0,
+        status: 'COMPLETED',
+        errorReason: null,
+        created_at: new Date(),
+        recipe_ingredients: [{ ri_id: 1, name: '된장', amount: '2', unit: 'tbsp' }],
+        recipe_steps: [],
+        cooking_logs: [],
+      } as never);
+
+      const recipe = await recipeService.getRecipeDetail(7, 1, 3);
+
+      expect(recipe).not.toBeNull();
+      expect(recipe?.base_servings).toBe(1);
+      expect(recipe?.requested_servings).toBe(3);
+      expect(recipe?.ingredients[0].amount).toBe(6);
+    });
   });
 });
