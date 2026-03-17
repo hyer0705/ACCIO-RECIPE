@@ -381,7 +381,7 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
           data: (ingredients as ExtractionIngredient[]).map((ing) => ({
             recipe_id,
             name: ing.name.trim(),
-            amount: ing.amount !== undefined ? ing.amount : null,
+            amount: normalizeAmount(ing.amount),
             unit: ing.unit ? ing.unit.trim() : null,
           })),
         });
