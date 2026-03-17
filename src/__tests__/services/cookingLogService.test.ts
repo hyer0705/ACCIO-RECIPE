@@ -75,11 +75,35 @@ describe('cookingLogService', () => {
 
       const result = await cookingLogService.createCookingLog(userId, validData);
 
+      expect(prisma.recipes.findUnique).toHaveBeenCalledWith({
+        where: {
+          recipe_id: validData.recipe_id,
+          user_id: userId,
+          status: 'COMPLETED',
+        },
+        select: { recipe_id: true },
+      });
       expect(prisma.cooking_logs.create).toHaveBeenCalled();
       expect(result.log_id).toBe(1);
     });
 
     test('존재하지 않는 레시피 ID로 생성 시 에러를 던진다', async () => {
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue(null);
+
+      await expect(cookingLogService.createCookingLog(userId, validData)).rejects.toThrow(
+        '존재하지 않는 레시피입니다.',
+      );
+    });
+
+    test('다른 사용자의 레시피면 에러를 던진다', async () => {
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue(null);
+
+      await expect(cookingLogService.createCookingLog(userId, validData)).rejects.toThrow(
+        '존재하지 않는 레시피입니다.',
+      );
+    });
+
+    test('완료되지 않은 레시피면 에러를 던진다', async () => {
       vi.mocked(prisma.recipes.findUnique).mockResolvedValue(null);
 
       await expect(cookingLogService.createCookingLog(userId, validData)).rejects.toThrow(

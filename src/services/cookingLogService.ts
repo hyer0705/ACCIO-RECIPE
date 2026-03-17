@@ -54,7 +54,11 @@ export async function createCookingLog(userId: number, data: CreateCookingLogDat
 
   // 2. 레시피 존재 여부 확인
   const existingRecipe = await prisma.recipes.findUnique({
-    where: { recipe_id: data.recipe_id },
+    where: {
+      recipe_id: data.recipe_id,
+      user_id: userId,
+      status: 'COMPLETED',
+    },
     select: { recipe_id: true },
   });
 
