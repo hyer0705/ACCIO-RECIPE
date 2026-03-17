@@ -23,9 +23,9 @@ vi.mock('@google/genai', () => {
   const mockGenerateContent = vi.fn();
   return {
     GoogleGenAI: vi.fn().mockImplementation(() => ({
-      getGenerativeModel: vi.fn().mockReturnValue({
+      models: {
         generateContent: mockGenerateContent,
-      }),
+      },
     })),
     Type: {
       OBJECT: 'object',

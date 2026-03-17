@@ -8,9 +8,9 @@ vi.mock('@google/genai', () => {
   return {
     GoogleGenAI: vi.fn().mockImplementation(function () {
       return {
-        getGenerativeModel: vi.fn().mockReturnValue({
+        models: {
           generateContent: mockGenerateContent,
-        }),
+        },
       };
     }),
     Type: {
@@ -171,9 +171,7 @@ describe('POST /api/recipes/extract (Gemini)', () => {
 
     // Gemini API 응답 모킹
     mockGenerateContent.mockResolvedValue({
-      response: {
-        text: JSON.stringify(expectedRecipe),
-      },
+      text: JSON.stringify(expectedRecipe),
     });
 
     // 유튜브 페이지 메타데이터 fetch 모킹
@@ -304,9 +302,7 @@ describe('POST /api/recipes/extract (Gemini)', () => {
 
     // Gemini 응답 모킹
     mockGenerateContent.mockResolvedValue({
-      response: {
-        text: () => JSON.stringify(expectedRecipe),
-      },
+      text: JSON.stringify(expectedRecipe),
     });
 
     const res = await POST(req);
