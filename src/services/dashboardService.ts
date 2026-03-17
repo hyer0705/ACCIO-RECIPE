@@ -86,8 +86,10 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
           user_id: userId,
           lesson_note: { not: null },
           recipes: {
-            user_id: userId,
-            status: 'COMPLETED',
+            is: {
+              user_id: userId,
+              status: 'COMPLETED',
+            },
           },
         },
         select: {

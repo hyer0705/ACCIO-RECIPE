@@ -107,6 +107,26 @@ describe('dashboardService', () => {
         },
         orderBy: { expiry_date: 'asc' },
       });
+
+      expect(prisma.cooking_logs.findFirst).toHaveBeenCalledWith({
+        where: {
+          user_id: userId,
+          lesson_note: { not: null },
+          recipes: {
+            is: {
+              user_id: userId,
+              status: 'COMPLETED',
+            },
+          },
+        },
+        select: {
+          log_id: true,
+          lesson_note: true,
+          cooked_at: true,
+          recipes: { select: { title: true } },
+        },
+        orderBy: { cooked_at: 'desc' },
+      });
     });
 
     test('이번 달 기록이 없으면 성공률은 null을 반환한다', async () => {
