@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { formatLocalDate, getTodayInLocalTime, parseAndValidateLocalDate } from '@/lib/localDate';
 
 export interface FridgeItemResponse {
   item_id: number;
@@ -14,8 +15,7 @@ export interface FridgeItemResponse {
  * 냉장고 아이템 목록 조회
  */
 export async function getFridgeItems(userId: number): Promise<FridgeItemResponse[]> {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = getTodayInLocalTime();
 
   const items = await prisma.fridge_items.findMany({
     where: { user_id: userId },
@@ -49,7 +49,7 @@ export async function getFridgeItems(userId: number): Promise<FridgeItemResponse
       icon_url: iconUrl,
       quantity: item.quantity !== null ? Number(item.quantity) : null,
       unit: item.unit,
-      expiry_date: item.expiry_date ? item.expiry_date.toISOString().split('T')[0] : null,
+      expiry_date: item.expiry_date ? formatLocalDate(item.expiry_date) : null,
       d_day: dDay,
     };
   });
@@ -82,10 +82,9 @@ export async function addFridgeItem(
   // 2. 유통기한 결정
   let resolvedExpiryDate: Date | null = null;
   if (data.expiry_date) {
-    resolvedExpiryDate = new Date(data.expiry_date);
+    resolvedExpiryDate = parseAndValidateLocalDate(data.expiry_date);
   } else if (master?.base_shelf_life != null) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const today = getTodayInLocalTime();
     today.setDate(today.getDate() + master.base_shelf_life);
     resolvedExpiryDate = today;
   }
@@ -139,7 +138,7 @@ export async function updateFridgeItem(
   if (data.quantity !== undefined) updateData.quantity = data.quantity;
   if (data.unit !== undefined) updateData.unit = data.unit.trim() || null;
   if (data.expiry_date !== undefined) {
-    updateData.expiry_date = data.expiry_date ? new Date(data.expiry_date) : null;
+    updateData.expiry_date = data.expiry_date ? parseAndValidateLocalDate(data.expiry_date) : null;
   }
 
   return await prisma.fridge_items.update({

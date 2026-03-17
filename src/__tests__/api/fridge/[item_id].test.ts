@@ -128,11 +128,34 @@ describe('PUT /api/fridge/[item_id]', () => {
 
   test('quantity가 음수면 400', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockFindUnique.mockResolvedValueOnce({ item_id: 1, user_id: 1 });
     const res = await PUT(makeReq({ quantity: -1 }), mockParams('1'));
     const body = await res.json();
     expect(res.status).toBe(400);
     expect(body.errors).toContain('수량(quantity)은 0보다 큰 숫자여야 합니다.');
+  });
+
+  test('expiry_date가 존재하지 않는 달력 날짜이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(makeReq({ expiry_date: '2026-02-31' }), mockParams('1'));
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.errors).toContain('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+  });
+
+  test('expiry_date가 과거 날짜이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const year = yesterday.getFullYear();
+    const month = String(yesterday.getMonth() + 1).padStart(2, '0');
+    const day = String(yesterday.getDate()).padStart(2, '0');
+
+    const res = await PUT(makeReq({ expiry_date: `${year}-${month}-${day}` }), mockParams('1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(body.errors).toContain('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
   });
 
   test('정상 요청 시 200 반환', async () => {

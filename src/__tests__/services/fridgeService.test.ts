@@ -78,6 +78,35 @@ describe('fridgeService', () => {
       expect(result.item_id).toBe(100);
       expect(prisma.fridge_items.create).toHaveBeenCalled();
     });
+
+    test('입력한 expiry_date를 로컬 날짜로 저장한다', async () => {
+      vi.mocked(prisma.ingredients_master.findFirst).mockResolvedValue(null);
+      vi.mocked(prisma.fridge_items.create).mockResolvedValue({
+        item_id: 101,
+        custom_name: '우유',
+        quantity: 1,
+        unit: null,
+        expiry_date: new Date(2026, 2, 20),
+      } as never);
+
+      await fridgeService.addFridgeItem(userId, { name: '우유', expiry_date: '2026-03-20' });
+
+      expect(prisma.fridge_items.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            expiry_date: expect.any(Date),
+          }),
+        }),
+      );
+
+      const createArg = vi.mocked(prisma.fridge_items.create).mock.calls[0][0];
+      const expiryDate = createArg.data.expiry_date as Date;
+
+      expect(expiryDate.getFullYear()).toBe(2026);
+      expect(expiryDate.getMonth()).toBe(2);
+      expect(expiryDate.getDate()).toBe(20);
+      expect(expiryDate.getHours()).toBe(0);
+    });
   });
 
   describe('updateFridgeItem', () => {
@@ -98,6 +127,28 @@ describe('fridgeService', () => {
 
       const result = await fridgeService.updateFridgeItem(userId, 1, { quantity: 5 });
       expect(result.quantity).toBe(5);
+    });
+
+    test('expiry_date 수정 시 로컬 날짜 Date 객체로 변환한다', async () => {
+      vi.mocked(prisma.fridge_items.findUnique).mockResolvedValue({
+        item_id: 1,
+        user_id: userId,
+      } as never);
+      vi.mocked(prisma.fridge_items.update).mockResolvedValue({
+        item_id: 1,
+        quantity: 5,
+        expiry_date: new Date(2026, 2, 22),
+      } as never);
+
+      await fridgeService.updateFridgeItem(userId, 1, { expiry_date: '2026-03-22' });
+
+      const updateArg = vi.mocked(prisma.fridge_items.update).mock.calls[0][0];
+      const expiryDate = updateArg.data.expiry_date as Date;
+
+      expect(expiryDate.getFullYear()).toBe(2026);
+      expect(expiryDate.getMonth()).toBe(2);
+      expect(expiryDate.getDate()).toBe(22);
+      expect(expiryDate.getHours()).toBe(0);
     });
 
     test('타인의 재료 수정 시 FORBIDDEN 에러를 던진다', async () => {

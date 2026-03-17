@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { formatLocalDate, getTodayInLocalTime, parseAndValidateLocalDate } from '@/lib/localDate';
 import * as fridgeService from '@/services/fridgeService';
 
 interface RouteContext {
@@ -32,8 +33,14 @@ export async function PUT(req: Request, context: RouteContext) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
     }
     if (body.expiry_date !== undefined) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(body.expiry_date) || isNaN(new Date(body.expiry_date).getTime())) {
+      try {
+        const expiryDate = parseAndValidateLocalDate(body.expiry_date);
+        const today = getTodayInLocalTime();
+
+        if (expiryDate < today) {
+          errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
+        }
+      } catch {
         errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
       }
     }
@@ -53,7 +60,7 @@ export async function PUT(req: Request, context: RouteContext) {
         data: {
           ...updated,
           quantity: updated.quantity !== null ? Number(updated.quantity) : null,
-          expiry_date: updated.expiry_date ? updated.expiry_date.toISOString().split('T')[0] : null,
+          expiry_date: updated.expiry_date ? formatLocalDate(updated.expiry_date) : null,
         },
       });
     } catch (e: unknown) {

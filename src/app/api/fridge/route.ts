@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
+import { getTodayInLocalTime, parseAndValidateLocalDate } from '@/lib/localDate';
 import * as fridgeService from '@/services/fridgeService';
 
 /**
@@ -60,15 +61,15 @@ export async function POST(req: Request) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
     }
     if (body.expiry_date !== undefined) {
-      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
-      if (!dateRegex.test(body.expiry_date) || isNaN(new Date(body.expiry_date).getTime())) {
-        errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
-      } else {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        if (new Date(body.expiry_date) < today) {
+      try {
+        const expiryDate = parseAndValidateLocalDate(body.expiry_date);
+        const today = getTodayInLocalTime();
+
+        if (expiryDate < today) {
           errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
         }
+      } catch {
+        errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
       }
     }
 
