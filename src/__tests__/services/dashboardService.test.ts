@@ -87,14 +87,14 @@ describe('dashboardService', () => {
       expect(result.recent_recipes.length).toBe(1);
 
       const expectedStartOfToday = new Date(2026, 2, 15);
-      const expectedExpiryThreshold = new Date(2026, 2, 22);
+      const expectedExpiryThresholdNextDay = new Date(2026, 2, 23);
 
       expect(prisma.fridge_items.findMany).toHaveBeenCalledWith({
         where: {
           user_id: userId,
           expiry_date: {
             gte: expectedStartOfToday,
-            lte: expectedExpiryThreshold,
+            lt: expectedExpiryThresholdNextDay,
           },
         },
         select: {
