@@ -38,11 +38,11 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
 
   // 이번 달 1일 00:00:00
   const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
+  const tomorrowStart = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
 
   // 지난달 범위
   const prevMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-  const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
   // 유통기한 임박 기준: 오늘 ~ 오늘+7일
   const startOfToday = new Date();
@@ -56,14 +56,14 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
       prisma.cooking_logs.findMany({
         where: {
           user_id: userId,
-          cooked_at: { gte: thisMonthStart, lte: todayEnd },
+          cooked_at: { gte: thisMonthStart, lt: tomorrowStart },
         },
         select: { status: true },
       }),
       prisma.cooking_logs.count({
         where: {
           user_id: userId,
-          cooked_at: { gte: prevMonthStart, lte: prevMonthEnd },
+          cooked_at: { gte: prevMonthStart, lt: currentMonthStart },
         },
       }),
       prisma.fridge_items.findMany({

@@ -115,5 +115,30 @@ describe('dashboardService', () => {
       const result = await dashboardService.getDashboardSummary(userId);
       expect(result.monthly_success_rate).toBeNull();
     });
+
+    test('이번 달과 지난달 조회에 배타적 종료 시각을 사용한다', async () => {
+      await dashboardService.getDashboardSummary(userId);
+
+      expect(prisma.cooking_logs.findMany).toHaveBeenCalledWith({
+        where: {
+          user_id: userId,
+          cooked_at: {
+            gte: new Date(2026, 2, 1),
+            lt: new Date(2026, 2, 16),
+          },
+        },
+        select: { status: true },
+      });
+
+      expect(prisma.cooking_logs.count).toHaveBeenCalledWith({
+        where: {
+          user_id: userId,
+          cooked_at: {
+            gte: new Date(2026, 1, 1),
+            lt: new Date(2026, 2, 1),
+          },
+        },
+      });
+    });
   });
 });
