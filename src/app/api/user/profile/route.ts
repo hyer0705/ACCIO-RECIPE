@@ -29,11 +29,14 @@ export async function GET() {
       throw e;
     }
   } catch (error: unknown) {
-    console.error('Error in GET /api/user/profile:', error);
+    console.error(
+      'Error in GET /api/user/profile:',
+      error instanceof Error ? error.stack : String(error),
+    );
     return NextResponse.json(
       {
         error: 'Internal Server Error',
-        details: error instanceof Error ? error.message : String(error),
+        message: 'An unexpected error occurred',
       },
       { status: 500 },
     );
