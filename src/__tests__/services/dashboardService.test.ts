@@ -116,6 +116,30 @@ describe('dashboardService', () => {
       expect(result.monthly_success_rate).toBeNull();
     });
 
+    test('유통기한 날짜를 로컬 타임존 기준 YYYY-MM-DD 문자열로 반환한다', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockItems: any = [
+        {
+          item_id: 1,
+          custom_name: '우유',
+          expiry_date: new Date(2026, 2, 20, 0, 30),
+          ingredients_master: { name: '우유', icon_url: null },
+        },
+        {
+          item_id: 2,
+          custom_name: '치즈',
+          expiry_date: null,
+          ingredients_master: null,
+        },
+      ];
+      vi.mocked(prisma.fridge_items.findMany).mockResolvedValue(mockItems);
+
+      const result = await dashboardService.getDashboardSummary(userId);
+
+      expect(result.expiring_items[0].expiry_date).toBe('2026-03-20');
+      expect(result.expiring_items[1].expiry_date).toBeNull();
+    });
+
     test('이번 달과 지난달 조회에 배타적 종료 시각을 사용한다', async () => {
       await dashboardService.getDashboardSummary(userId);
 

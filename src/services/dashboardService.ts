@@ -136,7 +136,9 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
       item_id: item.item_id,
       name,
       icon_url: iconUrl,
-      expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : null,
+      expiry_date: expiryDate
+        ? `${expiryDate.getFullYear()}-${String(expiryDate.getMonth() + 1).padStart(2, '0')}-${String(expiryDate.getDate()).padStart(2, '0')}`
+        : null,
       d_day: dDay,
     };
   });
