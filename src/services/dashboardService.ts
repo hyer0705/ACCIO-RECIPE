@@ -45,6 +45,8 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
   const prevMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59);
 
   // 유통기한 임박 기준: 오늘 ~ 오늘+7일
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const expiryThreshold = new Date(today);
   expiryThreshold.setDate(expiryThreshold.getDate() + 7);
@@ -67,7 +69,7 @@ export async function getDashboardSummary(userId: number): Promise<DashboardSumm
       prisma.fridge_items.findMany({
         where: {
           user_id: userId,
-          expiry_date: { lte: expiryThreshold },
+          expiry_date: { gte: startOfToday, lte: expiryThreshold },
         },
         select: {
           item_id: true,

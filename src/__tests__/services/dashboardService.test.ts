@@ -85,6 +85,28 @@ describe('dashboardService', () => {
       expect(result.expiring_items[0].d_day).toBe(5); // 20 - 15 = 5
       expect(result.latest_lesson?.recipe_title).toBe('볶음밥');
       expect(result.recent_recipes.length).toBe(1);
+
+      const expectedStartOfToday = new Date(2026, 2, 15);
+      const expectedExpiryThreshold = new Date(2026, 2, 22);
+
+      expect(prisma.fridge_items.findMany).toHaveBeenCalledWith({
+        where: {
+          user_id: userId,
+          expiry_date: {
+            gte: expectedStartOfToday,
+            lte: expectedExpiryThreshold,
+          },
+        },
+        select: {
+          item_id: true,
+          custom_name: true,
+          expiry_date: true,
+          ingredients_master: {
+            select: { name: true, icon_url: true },
+          },
+        },
+        orderBy: { expiry_date: 'asc' },
+      });
     });
 
     test('이번 달 기록이 없으면 성공률은 null을 반환한다', async () => {
