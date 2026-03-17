@@ -11,13 +11,16 @@ export interface ExtractionProgressEvent {
 export class SSEWriter {
   private controller: ReadableStreamDefaultController;
   private encoder: TextEncoder;
+  private closed: boolean;
 
   constructor(controller: ReadableStreamDefaultController) {
     this.controller = controller;
     this.encoder = new TextEncoder();
+    this.closed = false;
   }
 
   write(event: ExtractionProgressEvent) {
+    if (this.closed) return;
     try {
       const dataString = JSON.stringify(event);
       this.controller.enqueue(this.encoder.encode(`data: ${dataString}\n\n`));
@@ -27,6 +30,8 @@ export class SSEWriter {
   }
 
   close() {
+    if (this.closed) return;
+    this.closed = true;
     try {
       this.controller.close();
     } catch (e) {

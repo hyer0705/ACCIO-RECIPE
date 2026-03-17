@@ -1,5 +1,5 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
-import { withRetry, processExtraction } from '@/services/recipeService';
+import { withRetry, processExtraction, startExtractionProcess } from '@/services/recipeService';
 import prisma from '@/lib/prisma';
 import { SSEWriter } from '@/lib/recipe/sse';
 
@@ -37,6 +37,11 @@ vi.mock('@google/genai', () => {
     _mockGenerateContent: mockGenerateContent,
   };
 });
+
+vi.mock('@/lib/security', () => ({
+  validateSafeUrl: vi.fn(async (url: string) => new URL(url)),
+  fetchWithSsrfProtection: vi.fn(),
+}));
 
 describe('extractHelpers - withRetry AbortSignal support', () => {
   beforeEach(() => {
@@ -101,5 +106,22 @@ describe('extractHelpers - processExtraction AbortSignal support', () => {
     await processExtraction(1, [], 'Fallback', mockSSE as unknown as SSEWriter, controller.signal);
 
     expect(prisma.recipes.delete).toHaveBeenCalledWith({ where: { recipe_id: 1 } });
+    expect(mockSSE.close).toHaveBeenCalledTimes(1);
+  });
+
+  test('should close the stream when aborted before scraping completes', async () => {
+    const controller = new AbortController();
+    const { fetchWithSsrfProtection } = await import('@/lib/security');
+
+    vi.mocked(fetchWithSsrfProtection).mockRejectedValueOnce(new Error('Aborted'));
+
+    await startExtractionProcess(
+      1,
+      'https://example.com/recipe',
+      mockSSE as unknown as SSEWriter,
+      controller.signal,
+    );
+
+    expect(mockSSE.close).toHaveBeenCalledTimes(1);
   });
 });

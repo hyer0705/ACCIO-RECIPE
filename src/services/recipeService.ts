@@ -202,7 +202,10 @@ export async function processExtraction(
     });
     sse.close();
   } catch (err: unknown) {
-    if (err instanceof Error && err.message === 'Aborted') return;
+    if (err instanceof Error && err.message === 'Aborted') {
+      sse.close();
+      return;
+    }
     throw err;
   }
 }
@@ -602,7 +605,10 @@ export async function startExtractionProcess(
     await processExtraction(recipeId, contentsToAnalyze, fallbackTitle, sse, signal);
   } catch (err: unknown) {
     const error = err as Error;
-    if (error.message === 'Aborted') return;
+    if (error.message === 'Aborted') {
+      sse.close();
+      return;
+    }
     console.error('Extraction Process Error:', error);
     if (recipeId) {
       await prisma.recipes
