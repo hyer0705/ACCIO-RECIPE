@@ -172,7 +172,7 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     // Gemini API 응답 모킹
     mockGenerateContent.mockResolvedValue({
       response: {
-        text: () => JSON.stringify(expectedRecipe),
+        text: JSON.stringify(expectedRecipe),
       },
     });
 
