@@ -34,9 +34,14 @@ export async function getUserProfile(userId: number) {
  * 회원 탈퇴
  */
 export async function deleteUser(userId: number) {
-  const result = await prisma.users.deleteMany({
+  const existingUser = await prisma.users.findUnique({
     where: { user_id: userId },
+    select: { user_id: true },
   });
 
-  if (result.count === 0) throw new Error('NOT_FOUND');
+  if (!existingUser) throw new Error('NOT_FOUND');
+
+  await prisma.users.delete({
+    where: { user_id: userId },
+  });
 }
