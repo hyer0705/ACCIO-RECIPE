@@ -43,5 +43,31 @@ describe('authService', () => {
       );
       expect(result.nickname).toBe('요리왕');
     });
+
+    test('약관 동의가 false면 동의 시각을 null로 저장한다', async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const mockResult: any = {
+        user_id: userId,
+        nickname: '요리왕',
+        terms_agreements: false,
+      };
+      vi.mocked(prisma.users.update).mockResolvedValue(mockResult);
+
+      await authService.completeSignup(userId, {
+        nickname: '요리왕',
+        terms_agreements: false,
+      });
+
+      expect(prisma.users.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { user_id: userId },
+          data: expect.objectContaining({
+            nickname: '요리왕',
+            terms_agreements: false,
+            terms_agreed_at: null,
+          }),
+        }),
+      );
+    });
   });
 });

@@ -15,7 +15,7 @@ export async function completeSignup(
     data: {
       nickname: data.nickname,
       terms_agreements: data.terms_agreements,
-      terms_agreed_at: new Date(),
+      terms_agreed_at: data.terms_agreements ? new Date() : null,
     },
     select: {
       user_id: true,
