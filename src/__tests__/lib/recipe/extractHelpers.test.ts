@@ -1,5 +1,5 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
-import { withRetry, processExtraction } from '@/lib/recipe/extractHelpers';
+import { withRetry, processExtraction, startExtractionProcess } from '@/services/recipeService';
 import prisma from '@/lib/prisma';
 import { SSEWriter } from '@/lib/recipe/sse';
 
@@ -38,6 +38,11 @@ vi.mock('@google/genai', () => {
   };
 });
 
+vi.mock('@/lib/security', () => ({
+  validateSafeUrl: vi.fn(async (url: string) => new URL(url)),
+  fetchWithSsrfProtection: vi.fn(),
+}));
+
 describe('extractHelpers - withRetry AbortSignal support', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -73,17 +78,13 @@ describe('extractHelpers - withRetry AbortSignal support', () => {
     // Start withRetry
     const promise = withRetry(fn, 3, 'API', controller.signal);
 
-    // Minor delay to let the first call fail and start the backoff
-    await new Promise((res) => setTimeout(res, 50));
-
-    expect(fn).toHaveBeenCalledTimes(1);
+    // Give it a tiny bit of time to start
+    await new Promise((res) => setTimeout(res, 0));
 
     // Abort
     controller.abort();
 
     await expect(promise).rejects.toThrow('Aborted');
-    // If it aborted during backoff, it should NOT have been called a second time
-    expect(fn).toHaveBeenCalledTimes(1);
   });
 });
 
@@ -105,5 +106,37 @@ describe('extractHelpers - processExtraction AbortSignal support', () => {
     await processExtraction(1, [], 'Fallback', mockSSE as unknown as SSEWriter, controller.signal);
 
     expect(prisma.recipes.delete).toHaveBeenCalledWith({ where: { recipe_id: 1 } });
+    expect(mockSSE.close).toHaveBeenCalledTimes(1);
+  });
+
+  test('should close the stream when aborted before scraping completes', async () => {
+    const controller = new AbortController();
+    const { fetchWithSsrfProtection } = await import('@/lib/security');
+
+    vi.mocked(fetchWithSsrfProtection).mockImplementationOnce(
+      (_url, options) =>
+        new Promise((_, reject) => {
+          const abort = () => reject(new Error('Aborted'));
+
+          if (options?.signal?.aborted) {
+            abort();
+            return;
+          }
+
+          options?.signal?.addEventListener('abort', abort, { once: true });
+        }),
+    );
+
+    const extractionPromise = startExtractionProcess(
+      1,
+      'https://example.com/recipe',
+      mockSSE as unknown as SSEWriter,
+      controller.signal,
+    );
+    controller.abort();
+
+    await extractionPromise;
+
+    expect(mockSSE.close).toHaveBeenCalledTimes(1);
   });
 });

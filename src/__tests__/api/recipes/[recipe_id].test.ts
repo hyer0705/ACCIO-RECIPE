@@ -127,6 +127,29 @@ describe('GET /api/recipes/[recipe_id]', () => {
     expect(res.status).toBe(404);
   });
 
+  test('다른 사용자의 레시피이면 404', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockRecipesFindUnique.mockResolvedValueOnce({
+      recipe_id: 1,
+      user_id: 2,
+      title: '김치찌개',
+      source_url: null,
+      thumbnail_url: null,
+      difficulty: 'Easy',
+      servings: 2,
+      status: 'COMPLETED',
+      errorReason: null,
+      created_at: new Date(),
+      recipe_ingredients: [],
+      recipe_steps: [],
+      cooking_logs: [],
+    });
+
+    const res = await getRecipeDetail(makeReq(), mockParams('1'));
+
+    expect(res.status).toBe(404);
+  });
+
   test('servings 배율 적용: 2인분 기준 4인분 요청 시 수량 2배', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     mockRecipesFindUnique.mockResolvedValueOnce({

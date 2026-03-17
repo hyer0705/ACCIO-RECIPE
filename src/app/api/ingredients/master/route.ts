@@ -1,12 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/authOptions';
-import prisma from '@/lib/prisma';
+import * as ingredientService from '@/services/ingredientService';
 
-/**
- * 마스터 재료 목록 검색 (자동완성)
- * 현재 프론트엔드에서 사용되지 않아 Swagger 문서에서는 숨김 처리함
- */
 export async function GET(req: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -15,26 +11,9 @@ export async function GET(req: Request) {
     }
 
     const { searchParams } = new URL(req.url);
-    const q = searchParams.get('q')?.trim() ?? '';
+    const q = searchParams.get('q') ?? '';
 
-    const data = await prisma.ingredients_master.findMany({
-      where: q
-        ? {
-            name: {
-              contains: q,
-            },
-          }
-        : undefined,
-      select: {
-        master_id: true,
-        name: true,
-        category: true,
-        icon_url: true,
-        default_unit: true,
-      },
-      orderBy: { name: 'asc' },
-      take: 50,
-    });
+    const data = await ingredientService.searchMasterIngredients(q);
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {

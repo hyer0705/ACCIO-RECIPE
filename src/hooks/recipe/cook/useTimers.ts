@@ -15,9 +15,10 @@ export function useTimers() {
 
   // 컴포넌트 언마운트 시 미결 타임아웃 정리
   useEffect(() => {
+    const pendingTimeouts = pendingTimeoutsRef.current;
     return () => {
-      pendingTimeoutsRef.current.forEach(clearTimeout);
-      pendingTimeoutsRef.current.clear();
+      pendingTimeouts.forEach(clearTimeout);
+      pendingTimeouts.clear();
     };
   }, []);
 
