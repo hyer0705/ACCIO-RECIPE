@@ -361,10 +361,17 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
 
   if (recipe_id) {
     return await prisma.$transaction(async (tx) => {
+      const existingRecipe = await tx.recipes.findUnique({
+        where: { recipe_id },
+        select: { user_id: true },
+      });
+
+      if (!existingRecipe) throw new Error('NOT_FOUND');
+      if (existingRecipe.user_id !== userId) throw new Error('FORBIDDEN');
+
       const recipe = await tx.recipes.update({
         where: { recipe_id },
         data: {
-          user_id: userId,
           title: title.trim(),
           servings: servings,
           // eslint-disable-next-line @typescript-eslint/no-explicit-any

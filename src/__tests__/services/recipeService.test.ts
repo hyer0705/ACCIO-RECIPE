@@ -50,6 +50,94 @@ describe('recipeService', () => {
         { name: '버터', amount: 1.5, unit: '큰술' },
       ]);
     });
+
+    test('기존 레시피 수정 시 소유자가 아니면 FORBIDDEN을 던지고 update를 실행하지 않는다', async () => {
+      const findUnique = vi.fn().mockResolvedValue({ user_id: 2 });
+      const update = vi.fn();
+      const deleteManyIngredients = vi.fn();
+      const createManyIngredients = vi.fn();
+      const deleteManySteps = vi.fn();
+      const createManySteps = vi.fn();
+
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+        callback({
+          recipes: {
+            findUnique,
+            update,
+          },
+          recipe_ingredients: {
+            deleteMany: deleteManyIngredients,
+            createMany: createManyIngredients,
+          },
+          recipe_steps: {
+            deleteMany: deleteManySteps,
+            createMany: createManySteps,
+          },
+        } as never),
+      );
+
+      await expect(
+        recipeService.upsertRecipe(1, {
+          recipe_id: 7,
+          title: '된장찌개',
+          servings: 2,
+          difficulty: 'Easy',
+          source_url: null,
+          thumbnail_url: null,
+          ingredients: [{ name: '된장' }],
+          steps: [{ step_order: 1, instruction: '끓인다.' }],
+        }),
+      ).rejects.toThrow('FORBIDDEN');
+
+      expect(findUnique).toHaveBeenCalledWith({
+        where: { recipe_id: 7 },
+        select: { user_id: true },
+      });
+      expect(update).not.toHaveBeenCalled();
+      expect(deleteManyIngredients).not.toHaveBeenCalled();
+      expect(createManyIngredients).not.toHaveBeenCalled();
+      expect(deleteManySteps).not.toHaveBeenCalled();
+      expect(createManySteps).not.toHaveBeenCalled();
+    });
+
+    test('기존 레시피 수정 시 user_id를 변경하지 않는다', async () => {
+      const findUnique = vi.fn().mockResolvedValue({ user_id: 1 });
+      const update = vi.fn().mockResolvedValue({ recipe_id: 7, title: '된장찌개' });
+
+      vi.mocked(prisma.$transaction).mockImplementation(async (callback) =>
+        callback({
+          recipes: {
+            findUnique,
+            update,
+          },
+          recipe_ingredients: {
+            deleteMany: vi.fn(),
+            createMany: vi.fn(),
+          },
+          recipe_steps: {
+            deleteMany: vi.fn(),
+            createMany: vi.fn(),
+          },
+        } as never),
+      );
+
+      await recipeService.upsertRecipe(1, {
+        recipe_id: 7,
+        title: ' 된장찌개 ',
+        servings: 2,
+        difficulty: 'Easy',
+        source_url: null,
+        thumbnail_url: null,
+        ingredients: [],
+        steps: [],
+      });
+
+      expect(update).toHaveBeenCalledTimes(1);
+      const callArg = update.mock.calls[0][0];
+      expect(callArg.where).toEqual({ recipe_id: 7 });
+      expect(callArg.data).not.toHaveProperty('user_id');
+      expect(callArg.data.title).toBe('된장찌개');
+    });
   });
 
   describe('getRecipeDetail', () => {

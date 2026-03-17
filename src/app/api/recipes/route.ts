@@ -247,7 +247,25 @@ export async function POST(req: Request) {
       );
     }
 
-    const recipe = await recipeService.upsertRecipe(userId, body);
+    let recipe;
+    try {
+      recipe = await recipeService.upsertRecipe(userId, body);
+    } catch (e: unknown) {
+      const error = e as Error;
+      if (error.message === 'NOT_FOUND') {
+        return NextResponse.json(
+          { success: false, message: '존재하지 않는 레시피입니다.' },
+          { status: 404 },
+        );
+      }
+      if (error.message === 'FORBIDDEN') {
+        return NextResponse.json(
+          { success: false, message: '수정 권한이 없습니다.' },
+          { status: 403 },
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json(
       {
