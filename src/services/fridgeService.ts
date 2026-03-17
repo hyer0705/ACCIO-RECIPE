@@ -90,7 +90,8 @@ export async function addFridgeItem(
   }
 
   // 3. 단위 결정
-  const resolvedUnit = data.unit?.trim() ?? master?.default_unit ?? null;
+  const unitTrim = data.unit?.trim();
+  const resolvedUnit = unitTrim ? unitTrim : (master?.default_unit ?? null);
 
   // 4. 저장
   return await prisma.fridge_items.create({

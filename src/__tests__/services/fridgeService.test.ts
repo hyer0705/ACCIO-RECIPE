@@ -107,6 +107,31 @@ describe('fridgeService', () => {
       expect(expiryDate.getDate()).toBe(20);
       expect(expiryDate.getHours()).toBe(0);
     });
+
+    test('unit이 공백만 있으면 마스터 기본 단위로 폴백한다', async () => {
+      vi.mocked(prisma.ingredients_master.findFirst).mockResolvedValue({
+        master_id: 10,
+        default_unit: '개',
+        base_shelf_life: 7,
+      } as never);
+      vi.mocked(prisma.fridge_items.create).mockResolvedValue({
+        item_id: 102,
+        custom_name: null,
+        quantity: 1,
+        unit: '개',
+        expiry_date: null,
+      } as never);
+
+      await fridgeService.addFridgeItem(userId, { name: '계란', unit: '   ' });
+
+      expect(prisma.fridge_items.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            unit: '개',
+          }),
+        }),
+      );
+    });
   });
 
   describe('updateFridgeItem', () => {
