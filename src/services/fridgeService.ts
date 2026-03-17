@@ -11,6 +11,15 @@ export interface FridgeItemResponse {
   d_day: number | null;
 }
 
+function normalizeExpiryDate<T extends { expiry_date: Date | null }>(
+  item: T,
+): Omit<T, 'expiry_date'> & { expiry_date: string | null } {
+  return {
+    ...item,
+    expiry_date: item.expiry_date ? formatLocalDate(item.expiry_date) : null,
+  };
+}
+
 /**
  * 냉장고 아이템 목록 조회
  */
@@ -49,7 +58,7 @@ export async function getFridgeItems(userId: number): Promise<FridgeItemResponse
       icon_url: iconUrl,
       quantity: item.quantity !== null ? Number(item.quantity) : null,
       unit: item.unit,
-      expiry_date: item.expiry_date ? formatLocalDate(item.expiry_date) : null,
+      expiry_date: normalizeExpiryDate(item).expiry_date,
       d_day: dDay,
     };
   });
@@ -94,7 +103,7 @@ export async function addFridgeItem(
   const resolvedUnit = unitTrim ? unitTrim : (master?.default_unit ?? null);
 
   // 4. 저장
-  return await prisma.fridge_items.create({
+  const createdItem = await prisma.fridge_items.create({
     data: {
       user_id: userId,
       master_id: master?.master_id ?? null,
@@ -112,6 +121,8 @@ export async function addFridgeItem(
       expiry_date: true,
     },
   });
+
+  return normalizeExpiryDate(createdItem);
 }
 
 /**

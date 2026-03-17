@@ -312,6 +312,7 @@ describe('POST /api/fridge', () => {
     expect(data.success).toBe(true);
     expect(data.message).toBe('식재료가 성공적으로 추가되었습니다.');
     expect(data.data.item_id).toBe(1);
+    expect(data.data.expiry_date).toBe('2026-03-05');
   });
 
   test('정상 요청 시 user_id가 세션 id로 올바르게 전달된다', async () => {

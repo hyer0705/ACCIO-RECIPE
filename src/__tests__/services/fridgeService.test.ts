@@ -76,6 +76,7 @@ describe('fridgeService', () => {
       const result = await fridgeService.addFridgeItem(userId, data);
 
       expect(result.item_id).toBe(100);
+      expect(result.expiry_date).toBe('2026-03-08');
       expect(prisma.fridge_items.create).toHaveBeenCalled();
     });
 
