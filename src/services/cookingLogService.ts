@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { assertCookingLogOwner } from '@/lib/auth/authorization';
 import { cooking_logs_status } from '@/generated/client/enums';
 
 export interface CreateCookingLogData {
@@ -109,18 +110,9 @@ export async function updateCookingLog(
   userId: number,
   data: Partial<CreateCookingLogData>,
 ) {
-  const existing = await prisma.cooking_logs.findUnique({
-    where: { log_id: logId },
-    select: { user_id: true },
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '수정 권한이 없습니다.',
   });
-
-  if (!existing) {
-    throw new Error('NOT_FOUND');
-  }
-
-  if (existing.user_id !== userId) {
-    throw new Error('FORBIDDEN');
-  }
 
   const updateData: Record<string, unknown> = {};
   if (data.status !== undefined) updateData.status = data.status;
@@ -137,18 +129,9 @@ export async function updateCookingLog(
  * 요리 기록 삭제
  */
 export async function deleteCookingLog(logId: number, userId: number) {
-  const log = await prisma.cooking_logs.findUnique({
-    where: { log_id: logId },
-    select: { user_id: true },
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '삭제 권한이 없습니다.',
   });
-
-  if (!log) {
-    throw new Error('NOT_FOUND');
-  }
-
-  if (log.user_id !== userId) {
-    throw new Error('FORBIDDEN');
-  }
 
   return await prisma.cooking_logs.delete({
     where: { log_id: logId },

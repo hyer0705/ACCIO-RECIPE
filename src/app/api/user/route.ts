@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as userService from '@/services/userService';
 
 /**
@@ -11,13 +11,7 @@ import * as userService from '@/services/userService';
  */
 export async function DELETE() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id, 10);
+    const { userId } = await requireSessionUser();
 
     try {
       await userService.deleteUser(userId);
@@ -35,6 +29,11 @@ export async function DELETE() {
       throw e;
     }
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('DELETE /api/user Error:', error);
     return NextResponse.json(
       {

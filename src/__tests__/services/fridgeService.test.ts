@@ -185,7 +185,7 @@ describe('fridgeService', () => {
       };
       vi.mocked(prisma.fridge_items.findUnique).mockResolvedValue(mockFound);
       await expect(fridgeService.updateFridgeItem(userId, 1, { quantity: 5 })).rejects.toThrow(
-        'FORBIDDEN',
+        '수정 권한이 없습니다.',
       );
     });
   });

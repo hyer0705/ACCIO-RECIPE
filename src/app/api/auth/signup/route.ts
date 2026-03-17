@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as authService from '@/services/authService';
 
 /**
@@ -11,14 +11,9 @@ import * as authService from '@/services/authService';
  */
 export async function POST(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json(
-        { error: 'Unauthorized. Please login with a social provider first.' },
-        { status: 401 },
-      );
-    }
+    const { userId } = await requireSessionUser(
+      'Unauthorized. Please login with a social provider first.',
+    );
 
     const { nickname, terms_agreements } = await req.json();
 
@@ -28,8 +23,6 @@ export async function POST(req: NextRequest) {
         { status: 400 },
       );
     }
-
-    const userId = parseInt(session.user.id, 10);
 
     const updatedUser = await authService.completeSignup(userId, {
       nickname,
@@ -41,6 +34,14 @@ export async function POST(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const accessErrorResponse = toAccessControlErrorResponse(error, {
+      key: 'error',
+      includeSuccess: false,
+    });
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('Error in POST /api/auth/signup:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

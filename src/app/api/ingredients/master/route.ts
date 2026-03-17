@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
+import { requireSessionUser } from '@/lib/auth/session';
 import * as ingredientService from '@/services/ingredientService';
 
 export async function GET(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
+    await requireSessionUser();
 
     const { searchParams } = new URL(req.url);
     const q = searchParams.get('q') ?? '';
@@ -17,6 +14,11 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/ingredients/master Error:', error);
     return NextResponse.json(
       {

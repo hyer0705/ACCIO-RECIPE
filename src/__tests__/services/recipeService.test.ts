@@ -52,17 +52,17 @@ describe('recipeService', () => {
     });
 
     test('기존 레시피 수정 시 소유자가 아니면 FORBIDDEN을 던지고 update를 실행하지 않는다', async () => {
-      const findUnique = vi.fn().mockResolvedValue({ user_id: 2 });
       const update = vi.fn();
       const deleteManyIngredients = vi.fn();
       const createManyIngredients = vi.fn();
       const deleteManySteps = vi.fn();
       const createManySteps = vi.fn();
 
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue({ user_id: 2 } as never);
+
       vi.mocked(prisma.$transaction).mockImplementation(async (callback) =>
         callback({
           recipes: {
-            findUnique,
             update,
           },
           recipe_ingredients: {
@@ -87,9 +87,9 @@ describe('recipeService', () => {
           ingredients: [{ name: '된장' }],
           steps: [{ step_order: 1, instruction: '끓인다.' }],
         }),
-      ).rejects.toThrow('FORBIDDEN');
+      ).rejects.toThrow('수정 권한이 없습니다.');
 
-      expect(findUnique).toHaveBeenCalledWith({
+      expect(prisma.recipes.findUnique).toHaveBeenCalledWith({
         where: { recipe_id: 7 },
         select: { user_id: true },
       });
@@ -101,13 +101,13 @@ describe('recipeService', () => {
     });
 
     test('기존 레시피 수정 시 user_id를 변경하지 않는다', async () => {
-      const findUnique = vi.fn().mockResolvedValue({ user_id: 1 });
       const update = vi.fn().mockResolvedValue({ recipe_id: 7, title: '된장찌개' });
+
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue({ user_id: 1 } as never);
 
       vi.mocked(prisma.$transaction).mockImplementation(async (callback) =>
         callback({
           recipes: {
-            findUnique,
             update,
           },
           recipe_ingredients: {

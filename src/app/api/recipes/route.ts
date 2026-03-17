@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as recipeService from '@/services/recipeService';
 
 /**
@@ -71,12 +71,7 @@ import * as recipeService from '@/services/recipeService';
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const result = await recipeService.getRecipesByUser(userId);
 
     return NextResponse.json({
@@ -85,6 +80,11 @@ export async function GET() {
       data: result.data,
     });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/recipes Error:', error);
     return NextResponse.json(
       {
@@ -192,13 +192,7 @@ interface StepInput {
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const body = await req.json();
 
     if (!body || typeof body !== 'object') {
@@ -247,25 +241,7 @@ export async function POST(req: Request) {
       );
     }
 
-    let recipe;
-    try {
-      recipe = await recipeService.upsertRecipe(userId, body);
-    } catch (e: unknown) {
-      const error = e as Error;
-      if (error.message === 'NOT_FOUND') {
-        return NextResponse.json(
-          { success: false, message: '존재하지 않는 레시피입니다.' },
-          { status: 404 },
-        );
-      }
-      if (error.message === 'FORBIDDEN') {
-        return NextResponse.json(
-          { success: false, message: '수정 권한이 없습니다.' },
-          { status: 403 },
-        );
-      }
-      throw error;
-    }
+    const recipe = await recipeService.upsertRecipe(userId, body);
 
     return NextResponse.json(
       {
@@ -278,6 +254,11 @@ export async function POST(req: Request) {
       { status: body.recipe_id ? 200 : 201 },
     );
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('Create Recipe POST API Error:', error);
     return NextResponse.json(
       {

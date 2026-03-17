@@ -15,14 +15,15 @@ vi.mock('next-auth', () => ({
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockRecipesCreate, mockTransaction } = vi.hoisted(() => {
-  return { mockRecipesCreate: vi.fn(), mockTransaction: vi.fn() };
+const { mockRecipesCreate, mockRecipesFindUnique, mockTransaction } = vi.hoisted(() => {
+  return { mockRecipesCreate: vi.fn(), mockRecipesFindUnique: vi.fn(), mockTransaction: vi.fn() };
 });
 
 vi.mock('@/lib/prisma', () => ({
   default: {
     recipes: {
       create: mockRecipesCreate,
+      findUnique: mockRecipesFindUnique,
     },
     $transaction: mockTransaction,
   },
@@ -185,10 +186,10 @@ describe('POST /api/recipes', () => {
 
   test('다른 사용자의 레시피 수정 시 403을 반환한다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 2 });
     mockTransaction.mockImplementationOnce(async (callback) =>
       callback({
         recipes: {
-          findUnique: vi.fn().mockResolvedValue({ user_id: 2 }),
           update: vi.fn(),
         },
         recipe_ingredients: {

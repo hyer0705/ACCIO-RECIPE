@@ -2,7 +2,11 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { PUT } from '@/app/api/user/settings/route';
 import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth/next';
+import { getServerSession } from 'next-auth';
+
+vi.mock('next-auth', () => ({
+  getServerSession: vi.fn(),
+}));
 
 describe('PUT /api/user/settings', () => {
   beforeEach(() => {

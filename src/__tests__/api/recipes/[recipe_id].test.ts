@@ -198,7 +198,7 @@ describe('GET /api/recipes/[recipe_id]/steps', () => {
 
   test('step_order, instruction, timer_seconds만 반환', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesFindUnique.mockResolvedValueOnce({ recipe_id: 1 });
+    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 1 });
     mockStepsFindMany.mockResolvedValueOnce([
       { step_id: 1, step_order: 1, instruction: '물을 끓입니다.', timer_seconds: 300 },
     ]);
@@ -210,6 +210,17 @@ describe('GET /api/recipes/[recipe_id]/steps', () => {
     expect(body.data[0]).toHaveProperty('step_order');
     expect(body.data[0]).toHaveProperty('instruction');
     expect(body.data[0]).toHaveProperty('timer_seconds');
+  });
+
+  test('다른 사용자의 레시피면 403', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 2 });
+
+    const res = await getRecipeSteps(makeReq(), mockParams('1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.message).toBe('조회 권한이 없습니다.');
   });
 });
 
@@ -236,7 +247,7 @@ describe('GET /api/recipes/[recipe_id]/logs', () => {
 
   test('해당 레시피의 요리 기록 목록 반환', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesFindUnique.mockResolvedValueOnce({ recipe_id: 1 });
+    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 1 });
     mockLogsFindManyForRecipe.mockResolvedValueOnce([]);
     // cooking_logs.findMany 는 mockLogsFindMany 로 대체됨
     mockLogsFindMany.mockResolvedValueOnce([
@@ -255,6 +266,17 @@ describe('GET /api/recipes/[recipe_id]/logs', () => {
     expect(res.status).toBe(200);
     expect(Array.isArray(body.data)).toBe(true);
     expect(body.data[0].status).toBe('SUCCESS');
+  });
+
+  test('다른 사용자의 레시피면 403', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 2 });
+
+    const res = await getRecipeLogs(makeReq(), mockParams('1'));
+    const body = await res.json();
+
+    expect(res.status).toBe(403);
+    expect(body.message).toBe('조회 권한이 없습니다.');
   });
 });
 

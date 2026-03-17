@@ -148,7 +148,7 @@ describe('cookingLogService', () => {
       vi.mocked(prisma.cooking_logs.findUnique).mockResolvedValue(mockLog);
 
       await expect(cookingLogService.updateCookingLog(logId, userId, updateData)).rejects.toThrow(
-        'FORBIDDEN',
+        '수정 권한이 없습니다.',
       );
     });
 
@@ -156,7 +156,7 @@ describe('cookingLogService', () => {
       vi.mocked(prisma.cooking_logs.findUnique).mockResolvedValue(null);
 
       await expect(cookingLogService.updateCookingLog(logId, userId, updateData)).rejects.toThrow(
-        'NOT_FOUND',
+        '존재하지 않는 요리 기록입니다.',
       );
     });
   });
@@ -183,7 +183,9 @@ describe('cookingLogService', () => {
       const mockLog: any = { log_id: logId, user_id: 999 };
       vi.mocked(prisma.cooking_logs.findUnique).mockResolvedValue(mockLog);
 
-      await expect(cookingLogService.deleteCookingLog(logId, userId)).rejects.toThrow('FORBIDDEN');
+      await expect(cookingLogService.deleteCookingLog(logId, userId)).rejects.toThrow(
+        '삭제 권한이 없습니다.',
+      );
     });
   });
 });

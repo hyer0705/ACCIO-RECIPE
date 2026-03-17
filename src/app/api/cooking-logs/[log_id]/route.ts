@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import { cooking_logs_status } from '@/generated/client/enums';
 import * as cookingLogService from '@/services/cookingLogService';
 
@@ -12,12 +12,7 @@ interface RouteContext {
 
 export async function PUT(req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const { log_id: logIdParam } = await context.params;
     const logId = parseInt(logIdParam, 10);
 
@@ -58,35 +53,22 @@ export async function PUT(req: Request, context: RouteContext) {
       );
     }
 
-    try {
-      const updated = await cookingLogService.updateCookingLog(
-        logId,
-        userId,
-        body as unknown as Partial<cookingLogService.CreateCookingLogData>,
-      );
-      return NextResponse.json({
-        success: true,
-        message: '요리 기록이 수정되었습니다.',
-        data: updated,
-      });
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        if (e.message === 'NOT_FOUND') {
-          return NextResponse.json(
-            { success: false, message: '존재하지 않는 요리 기록입니다.' },
-            { status: 404 },
-          );
-        }
-        if (e.message === 'FORBIDDEN') {
-          return NextResponse.json(
-            { success: false, message: '수정 권한이 없습니다.' },
-            { status: 403 },
-          );
-        }
-      }
-      throw e;
-    }
+    const updated = await cookingLogService.updateCookingLog(
+      logId,
+      userId,
+      body as unknown as Partial<cookingLogService.CreateCookingLogData>,
+    );
+    return NextResponse.json({
+      success: true,
+      message: '요리 기록이 수정되었습니다.',
+      data: updated,
+    });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('PUT /api/cooking-logs/[log_id] Error:', error);
     return NextResponse.json(
       {
@@ -101,12 +83,7 @@ export async function PUT(req: Request, context: RouteContext) {
 
 export async function DELETE(_req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const { log_id: logIdParam } = await context.params;
     const logId = parseInt(logIdParam, 10);
 
@@ -117,27 +94,14 @@ export async function DELETE(_req: Request, context: RouteContext) {
       );
     }
 
-    try {
-      await cookingLogService.deleteCookingLog(logId, userId);
-      return NextResponse.json({ success: true, message: '요리 기록이 삭제되었습니다.' });
-    } catch (e: unknown) {
-      if (e instanceof Error) {
-        if (e.message === 'NOT_FOUND') {
-          return NextResponse.json(
-            { success: false, message: '존재하지 않는 요리 기록입니다.' },
-            { status: 404 },
-          );
-        }
-        if (e.message === 'FORBIDDEN') {
-          return NextResponse.json(
-            { success: false, message: '삭제 권한이 없습니다.' },
-            { status: 403 },
-          );
-        }
-      }
-      throw e;
-    }
+    await cookingLogService.deleteCookingLog(logId, userId);
+    return NextResponse.json({ success: true, message: '요리 기록이 삭제되었습니다.' });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('DELETE /api/cooking-logs/[log_id] Error:', error);
     return NextResponse.json(
       {

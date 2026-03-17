@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { load } from 'cheerio';
 import prisma from '@/lib/prisma';
+import { assertRecipeOwner } from '@/lib/auth/authorization';
 import { SYSTEM_PROMPT, GEMINI_SCHEMA } from '@/lib/recipe/extractPrompts';
 import { SSEWriter } from '@/lib/recipe/sse';
 import { validateSafeUrl, fetchWithSsrfProtection } from '@/lib/security';
@@ -363,15 +364,11 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
   } = body;
 
   if (recipe_id) {
+    await assertRecipeOwner(userId, recipe_id, {
+      forbiddenMessage: '수정 권한이 없습니다.',
+    });
+
     return await prisma.$transaction(async (tx) => {
-      const existingRecipe = await tx.recipes.findUnique({
-        where: { recipe_id },
-        select: { user_id: true },
-      });
-
-      if (!existingRecipe) throw new Error('NOT_FOUND');
-      if (existingRecipe.user_id !== userId) throw new Error('FORBIDDEN');
-
       const recipe = await tx.recipes.update({
         where: { recipe_id },
         data: {
@@ -449,13 +446,9 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
 
 // ── 레시피 삭제 ────────────────────────────────────────────────────────────────
 export async function deleteRecipe(recipeId: number, userId: number) {
-  const recipe = await prisma.recipes.findUnique({
-    where: { recipe_id: recipeId },
-    select: { user_id: true },
+  await assertRecipeOwner(userId, recipeId, {
+    forbiddenMessage: '삭제 권한이 없습니다.',
   });
-
-  if (!recipe) throw new Error('NOT_FOUND');
-  if (recipe.user_id !== userId) throw new Error('FORBIDDEN');
 
   await prisma.recipes.delete({ where: { recipe_id: recipeId } });
   return true;
