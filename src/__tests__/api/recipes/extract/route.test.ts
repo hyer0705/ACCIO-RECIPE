@@ -8,9 +8,9 @@ vi.mock('@google/genai', () => {
   return {
     GoogleGenAI: vi.fn().mockImplementation(function () {
       return {
-        models: {
+        getGenerativeModel: vi.fn().mockReturnValue({
           generateContent: mockGenerateContent,
-        },
+        }),
       };
     }),
     Type: {
@@ -66,24 +66,18 @@ vi.mock('@/lib/authOptions', () => ({
   authOptions: {},
 }));
 
-// 4. Mocking Prisma and processExtraction
-vi.mock('@/lib/prisma', () => ({
-  default: {
-    recipes: {
-      create: vi.fn().mockResolvedValue({ recipe_id: 1, status: 'PENDING' }),
-      update: vi.fn(),
-    },
-    $transaction: vi.fn(),
+// 4. Mocking Prisma
+const mockPrisma = vi.hoisted(() => ({
+  recipes: {
+    create: vi.fn(),
+    update: vi.fn(),
+    delete: vi.fn(),
   },
+  $transaction: vi.fn((cb) => cb(mockPrisma)),
 }));
 
-vi.mock('@/lib/recipe/extractHelpers', () => ({
-  processExtraction: vi.fn().mockImplementation(async (recipeId, contents, title, sse) => {
-    // 실제 processExtraction처럼 마지막에 sse.close()를 호출해줘야 스트림이 닫힙니다.
-    sse.write({ step: 4, total: 4, message: '완료!' });
-    sse.close();
-    return true;
-  }),
+vi.mock('@/lib/prisma', () => ({
+  default: mockPrisma,
 }));
 
 describe('POST /api/recipes/extract (Gemini)', () => {
@@ -91,13 +85,21 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     vi.clearAllMocks();
     process.env.GEMINI_API_KEY = 'test-gemini-api-key';
 
-    // vi.clearAllMocks()가 global.fetch 구현을 초기화하므로 매 테스트마다 기본 mock 복구
-    vi.mocked(global.fetch).mockResolvedValue({
-      ok: true,
-      status: 200,
-      text: vi.fn().mockResolvedValue('<html><body>No recipe here</body></html>'),
-      headers: new Headers(),
-    } as unknown as Response);
+    // Prisma mocks 초기화
+    mockPrisma.recipes.create.mockResolvedValue({ recipe_id: 1, status: 'PENDING' });
+    mockPrisma.recipes.update.mockResolvedValue({});
+    mockPrisma.recipes.delete.mockResolvedValue({});
+
+    // global.fetch 기본 mock 복구
+    vi.mocked(global.fetch).mockImplementation(
+      async () =>
+        ({
+          ok: true,
+          status: 200,
+          text: async () => '<html><body>No recipe here</body></html>',
+          headers: new Headers(),
+        }) as unknown as Response,
+    );
   });
 
   const createRequest = (body: unknown) => {
@@ -145,11 +147,13 @@ describe('POST /api/recipes/extract (Gemini)', () => {
       .filter((e) => e.trim().startsWith('data: '))
       .map((e) => JSON.parse(e.replace(/^data:\s*/, '')));
 
-    const errorEvent = events.find((e) => e.error === 'Insufficient text');
+    const errorEvent = events.find(
+      (e) => e.message && e.message.includes('본문 내용을 추출할 수 없습니다'),
+    );
 
     expect(res.status).toBe(200); // SSE 시작은 항상 200
     expect(errorEvent).toBeDefined();
-    expect(errorEvent?.message).toBe('추출된 텍스트가 부족하여 분석할 수 없습니다.');
+    expect(errorEvent?.message).toContain('본문 내용을 추출할 수 없습니다');
   });
 
   test('다양한 유튜브 URL 요청 시 올바르게 ID를 추출하고 썸네일을 반환한다', async () => {
@@ -166,8 +170,10 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     };
 
     // Gemini API 응답 모킹
-    mockGenerateContent.mockResolvedValueOnce({
-      text: JSON.stringify(expectedRecipe),
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify(expectedRecipe),
+      },
     });
 
     // 유튜브 페이지 메타데이터 fetch 모킹
@@ -297,8 +303,10 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     };
 
     // Gemini 응답 모킹
-    mockGenerateContent.mockResolvedValueOnce({
-      text: JSON.stringify(expectedRecipe),
+    mockGenerateContent.mockResolvedValue({
+      response: {
+        text: () => JSON.stringify(expectedRecipe),
+      },
     });
 
     const res = await POST(req);
@@ -351,9 +359,10 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     for (const url of maliciousUrls) {
       const req = createRequest({ url });
       const res = await POST(req);
-      const data = await res.json();
 
       expect(res.status).toBe(400);
+      const data = await res.json();
+
       expect(data.success).toBe(false);
       expect(data.error).toMatch(/사설 IP|허용되지 않는 IP|유효하지 않은 URL/);
     }
