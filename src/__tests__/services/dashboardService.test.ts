@@ -20,7 +20,7 @@ vi.mock('@/lib/prisma', () => ({
 
 describe('dashboardService', () => {
   const userId = 1;
-  const now = new Date('2026-03-15T10:00:00Z');
+  const now = new Date(2026, 2, 15, 10, 0, 0);
 
   beforeEach(() => {
     vi.resetAllMocks();
@@ -55,7 +55,7 @@ describe('dashboardService', () => {
         {
           item_id: 1,
           custom_name: '우유',
-          expiry_date: new Date('2026-03-20'),
+          expiry_date: new Date(2026, 2, 20),
           ingredients_master: { name: '우유', icon_url: null },
         },
       ];
@@ -66,7 +66,7 @@ describe('dashboardService', () => {
       const mockLesson: any = {
         log_id: 10,
         lesson_note: '좋은 경험',
-        cooked_at: new Date('2026-03-14'),
+        cooked_at: new Date(2026, 2, 14),
         recipes: { title: '볶음밥' },
       };
       vi.mocked(prisma.cooking_logs.findFirst).mockResolvedValue(mockLesson);
