@@ -53,15 +53,15 @@ export async function PUT(req: Request, context: RouteContext) {
       );
     }
 
-    const validatedData: Partial<cookingLogService.CreateCookingLogData> = {};
+    const validatedData: cookingLogService.UpdateCookingLogData = {};
     if (body.status !== undefined) {
       validatedData.status = body.status as cooking_logs_status;
     }
     if (body.lesson_note !== undefined) {
-      validatedData.lesson_note = body.lesson_note as string;
+      validatedData.lesson_note = (body.lesson_note as string).trim();
     }
     if (body.companion !== undefined) {
-      validatedData.companion = body.companion as string;
+      validatedData.companion = (body.companion as string).trim();
     }
 
     const updated = await cookingLogService.updateCookingLog(logId, userId, validatedData);

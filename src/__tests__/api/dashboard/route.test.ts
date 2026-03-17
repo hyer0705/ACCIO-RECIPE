@@ -8,7 +8,7 @@ const { mockGetServerSession } = vi.hoisted(() => {
   return { mockGetServerSession: vi.fn() };
 });
 
-vi.mock('next-auth', () => ({
+vi.mock('next-auth/next', () => ({
   getServerSession: mockGetServerSession,
 }));
 

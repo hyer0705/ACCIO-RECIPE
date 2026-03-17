@@ -10,6 +10,8 @@ export interface CreateCookingLogData {
   companion?: string;
 }
 
+export type UpdateCookingLogData = Omit<Partial<CreateCookingLogData>, 'recipe_id'>;
+
 /**
  * 사용자의 전체 요리 기록 목록을 최신순으로 조회
  */
@@ -110,11 +112,7 @@ export async function getCookingLogDetail(logId: number, userId: number) {
 /**
  * 요리 기록 수정
  */
-export async function updateCookingLog(
-  logId: number,
-  userId: number,
-  data: Partial<CreateCookingLogData>,
-) {
+export async function updateCookingLog(logId: number, userId: number, data: UpdateCookingLogData) {
   await assertCookingLogOwner(userId, logId, {
     forbiddenMessage: '수정 권한이 없습니다.',
   });

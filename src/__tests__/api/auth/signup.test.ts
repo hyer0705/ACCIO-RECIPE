@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NextRequest } from 'next/server';
 import { POST } from '@/app/api/auth/signup/route';
 import prisma from '@/lib/prisma';
-import { getServerSession } from 'next-auth';
+import { getServerSession } from 'next-auth/next';
 
-vi.mock('next-auth', () => ({
+vi.mock('next-auth/next', () => ({
   getServerSession: vi.fn(),
 }));
 
