@@ -1,18 +1,31 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
+import { requireSessionUser } from '@/lib/auth/session';
 import { SSEWriter } from '@/lib/recipe/sse';
 import { validateSafeUrl } from '@/lib/security';
 import * as recipeService from '@/services/recipeService';
 
 export async function POST(req: Request) {
-  // 1. 초기 검증 (스트림 시작 전)
-  const session = await getServerSession(authOptions);
-  if (!session || !session.user || !('id' in session.user)) {
-    return NextResponse.json({ success: false, error: '인증이 필요합니다.' }, { status: 401 });
+  let userId: number;
+
+  try {
+    ({ userId } = await requireSessionUser());
+  } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error, {
+      key: 'error',
+      includeSuccess: true,
+    });
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
+    console.error('Extract API auth error:', error);
+    return NextResponse.json(
+      { success: false, error: '서버 에러가 발생했습니다.' },
+      { status: 500 },
+    );
   }
 
-  const userId = parseInt(session.user.id as string, 10);
   let url: string;
   try {
     const json = await req.json();

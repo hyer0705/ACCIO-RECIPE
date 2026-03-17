@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import { cooking_logs_status } from '@/generated/client/enums';
 import * as cookingLogService from '@/services/cookingLogService';
 
@@ -15,16 +15,16 @@ const VALID_STATUS_VALUES = Object.values(cooking_logs_status);
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const data = await cookingLogService.getCookingLogs(userId);
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/cooking-logs Error:', error);
     return NextResponse.json(
       {
@@ -45,13 +45,7 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const body: Record<string, unknown> = await req.json();
 
     // ── 1. 입력 유효성 검사 (핸들러 레벨) ───────────────────────────
@@ -121,6 +115,11 @@ export async function POST(req: Request) {
       throw e;
     }
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('POST /api/cooking-logs Error:', error);
     return NextResponse.json(
       {

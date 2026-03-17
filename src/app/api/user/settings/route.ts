@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import prisma from '@/lib/prisma';
 
 /**
@@ -41,13 +41,7 @@ import prisma from '@/lib/prisma';
  */
 export async function PUT(req: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id, 10);
+    const { userId } = await requireSessionUser('Unauthorized');
     const body = await req.json();
 
     // 입력받은 데이터 필터링
@@ -110,6 +104,14 @@ export async function PUT(req: NextRequest) {
       { status: 200 },
     );
   } catch (error) {
+    const accessErrorResponse = toAccessControlErrorResponse(error, {
+      key: 'error',
+      includeSuccess: false,
+    });
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('Error in PUT /api/user/settings:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

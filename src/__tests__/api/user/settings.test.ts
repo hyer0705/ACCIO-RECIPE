@@ -4,6 +4,10 @@ import { PUT } from '@/app/api/user/settings/route';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 
+vi.mock('next-auth/next', () => ({
+  getServerSession: vi.fn(),
+}));
+
 describe('PUT /api/user/settings', () => {
   beforeEach(() => {
     vi.clearAllMocks();

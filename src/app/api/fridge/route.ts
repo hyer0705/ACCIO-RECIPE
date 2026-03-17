@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import { getTodayInLocalTime, parseAndValidateLocalDate } from '@/lib/localDate';
 import * as fridgeService from '@/services/fridgeService';
 
@@ -12,17 +12,16 @@ import * as fridgeService from '@/services/fridgeService';
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const data = await fridgeService.getFridgeItems(userId);
 
     return NextResponse.json({ success: true, data });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/fridge Error:', error);
     return NextResponse.json(
       {
@@ -43,13 +42,7 @@ export async function GET() {
  */
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const body = await req.json();
 
     // ── 1. 입력값 검증 ───────────────────────────────────────────────
@@ -92,6 +85,11 @@ export async function POST(req: Request) {
       { status: 201 },
     );
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('POST /api/fridge Error:', error);
     return NextResponse.json(
       {

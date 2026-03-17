@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as recipeService from '@/services/recipeService';
 
 interface RouteContext {
@@ -9,12 +9,7 @@ interface RouteContext {
 
 export async function GET(req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const { recipe_id: recipeIdParam } = await context.params;
     const recipeId = parseInt(recipeIdParam, 10);
 
@@ -42,6 +37,11 @@ export async function GET(req: Request, context: RouteContext) {
       data: recipe,
     });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/recipes/[recipe_id] Error:', error);
     return NextResponse.json(
       {
@@ -56,12 +56,7 @@ export async function GET(req: Request, context: RouteContext) {
 
 export async function DELETE(_req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const { recipe_id: recipeIdParam } = await context.params;
     const recipeId = parseInt(recipeIdParam, 10);
 
@@ -72,29 +67,17 @@ export async function DELETE(_req: Request, context: RouteContext) {
       );
     }
 
-    try {
-      await recipeService.deleteRecipe(recipeId, userId);
-      return NextResponse.json(
-        { success: true, message: '레시피가 삭제되었습니다.' },
-        { status: 200 },
-      );
-    } catch (e: unknown) {
-      const error = e as Error;
-      if (error.message === 'NOT_FOUND') {
-        return NextResponse.json(
-          { success: false, message: '존재하지 않는 레시피입니다.' },
-          { status: 404 },
-        );
-      }
-      if (error.message === 'FORBIDDEN') {
-        return NextResponse.json(
-          { success: false, message: '삭제 권한이 없습니다.' },
-          { status: 403 },
-        );
-      }
-      throw error;
-    }
+    await recipeService.deleteRecipe(recipeId, userId);
+    return NextResponse.json(
+      { success: true, message: '레시피가 삭제되었습니다.' },
+      { status: 200 },
+    );
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('DELETE /api/recipes/[recipe_id] Error:', error);
     return NextResponse.json(
       {

@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { assertFridgeItemOwner } from '@/lib/auth/authorization';
 import { formatLocalDate, getTodayInLocalTime, parseAndValidateLocalDate } from '@/lib/localDate';
 
 export interface FridgeItemResponse {
@@ -137,14 +138,9 @@ export async function updateFridgeItem(
     expiry_date?: string;
   },
 ) {
-  // 존재 및 권한 확인
-  const existing = await prisma.fridge_items.findUnique({
-    where: { item_id: itemId },
-    select: { user_id: true },
+  await assertFridgeItemOwner(userId, itemId, {
+    forbiddenMessage: '수정 권한이 없습니다.',
   });
-
-  if (!existing) throw new Error('NOT_FOUND');
-  if (existing.user_id !== userId) throw new Error('FORBIDDEN');
 
   const updateData: Record<string, unknown> = {};
   if (data.quantity !== undefined) updateData.quantity = data.quantity;
@@ -170,13 +166,9 @@ export async function updateFridgeItem(
  * 냉장고 아이템 삭제
  */
 export async function deleteFridgeItem(userId: number, itemId: number) {
-  const existing = await prisma.fridge_items.findUnique({
-    where: { item_id: itemId },
-    select: { user_id: true },
+  await assertFridgeItemOwner(userId, itemId, {
+    forbiddenMessage: '삭제 권한이 없습니다.',
   });
-
-  if (!existing) throw new Error('NOT_FOUND');
-  if (existing.user_id !== userId) throw new Error('FORBIDDEN');
 
   await prisma.fridge_items.delete({ where: { item_id: itemId } });
 }

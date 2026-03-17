@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as dashboardService from '@/services/dashboardService';
 
 /**
@@ -11,13 +11,7 @@ import * as dashboardService from '@/services/dashboardService';
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id as string, 10);
+    const { userId } = await requireSessionUser();
     const dashboardData = await dashboardService.getDashboardSummary(userId);
 
     return NextResponse.json({
@@ -25,6 +19,11 @@ export async function GET() {
       data: dashboardData,
     });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/dashboard Error:', error);
     return NextResponse.json(
       {

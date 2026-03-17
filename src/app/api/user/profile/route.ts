@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth/next';
-import { authOptions } from '@/lib/authOptions';
+import { requireSessionUser } from '@/lib/auth/session';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as userService from '@/services/userService';
 
 /**
@@ -11,13 +11,7 @@ import * as userService from '@/services/userService';
  */
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session || !session.user || !session.user.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const userId = parseInt(session.user.id, 10);
+    const { userId } = await requireSessionUser('Unauthorized');
 
     try {
       const userProfile = await userService.getUserProfile(userId);
@@ -29,6 +23,14 @@ export async function GET() {
       throw e;
     }
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error, {
+      key: 'error',
+      includeSuccess: false,
+    });
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error(
       'Error in GET /api/user/profile:',
       error instanceof Error ? error.stack : String(error),

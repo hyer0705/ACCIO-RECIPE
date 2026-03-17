@@ -1,4 +1,6 @@
 import prisma from '@/lib/prisma';
+import { assertCookingLogOwner } from '@/lib/auth/authorization';
+import { notFound } from '@/lib/auth/errors';
 import { cooking_logs_status } from '@/generated/client/enums';
 
 export interface CreateCookingLogData {
@@ -7,6 +9,8 @@ export interface CreateCookingLogData {
   lesson_note: string;
   companion?: string;
 }
+
+export type UpdateCookingLogData = Omit<Partial<CreateCookingLogData>, 'recipe_id'>;
 
 /**
  * 사용자의 전체 요리 기록 목록을 최신순으로 조회
@@ -82,6 +86,10 @@ export async function createCookingLog(userId: number, data: CreateCookingLogDat
  * 요리 기록 상세 조회
  */
 export async function getCookingLogDetail(logId: number, userId: number) {
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '조회 권한이 없습니다.',
+  });
+
   const log = await prisma.cooking_logs.findUnique({
     where: { log_id: logId },
     include: {
@@ -91,8 +99,8 @@ export async function getCookingLogDetail(logId: number, userId: number) {
     },
   });
 
-  if (!log || log.user_id !== userId) {
-    return null;
+  if (!log) {
+    throw notFound('존재하지 않는 요리 기록입니다.');
   }
 
   return {
@@ -104,23 +112,10 @@ export async function getCookingLogDetail(logId: number, userId: number) {
 /**
  * 요리 기록 수정
  */
-export async function updateCookingLog(
-  logId: number,
-  userId: number,
-  data: Partial<CreateCookingLogData>,
-) {
-  const existing = await prisma.cooking_logs.findUnique({
-    where: { log_id: logId },
-    select: { user_id: true },
+export async function updateCookingLog(logId: number, userId: number, data: UpdateCookingLogData) {
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '수정 권한이 없습니다.',
   });
-
-  if (!existing) {
-    throw new Error('NOT_FOUND');
-  }
-
-  if (existing.user_id !== userId) {
-    throw new Error('FORBIDDEN');
-  }
 
   const updateData: Record<string, unknown> = {};
   if (data.status !== undefined) updateData.status = data.status;
@@ -137,18 +132,9 @@ export async function updateCookingLog(
  * 요리 기록 삭제
  */
 export async function deleteCookingLog(logId: number, userId: number) {
-  const log = await prisma.cooking_logs.findUnique({
-    where: { log_id: logId },
-    select: { user_id: true },
+  await assertCookingLogOwner(userId, logId, {
+    forbiddenMessage: '삭제 권한이 없습니다.',
   });
-
-  if (!log) {
-    throw new Error('NOT_FOUND');
-  }
-
-  if (log.user_id !== userId) {
-    throw new Error('FORBIDDEN');
-  }
 
   return await prisma.cooking_logs.delete({
     where: { log_id: logId },

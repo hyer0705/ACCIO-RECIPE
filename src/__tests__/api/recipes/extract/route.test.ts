@@ -56,7 +56,7 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }));
 
-vi.mock('next-auth', () => ({
+vi.mock('next-auth/next', () => ({
   getServerSession: vi.fn().mockResolvedValue({
     user: { id: '1', name: 'Test User', email: 'test@example.com' },
   }),

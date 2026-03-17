@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/authOptions';
+import { assertRecipeOwner } from '@/lib/auth/authorization';
+import { toAccessControlErrorResponse } from '@/lib/auth/response';
+import { requireSessionUser } from '@/lib/auth/session';
 import prisma from '@/lib/prisma';
 
 /**
@@ -59,11 +60,7 @@ interface RouteContext {
 
 export async function GET(_req: Request, context: RouteContext) {
   try {
-    const session = await getServerSession(authOptions);
-    if (!session || !session.user || !('id' in session.user)) {
-      return NextResponse.json({ success: false, message: '인증이 필요합니다.' }, { status: 401 });
-    }
-
+    const { userId } = await requireSessionUser();
     const { recipe_id: recipeIdParam } = await context.params;
     const recipeId = parseInt(recipeIdParam, 10);
 
@@ -74,18 +71,9 @@ export async function GET(_req: Request, context: RouteContext) {
       );
     }
 
-    // 레시피 존재 확인
-    const recipe = await prisma.recipes.findUnique({
-      where: { recipe_id: recipeId },
-      select: { recipe_id: true },
+    await assertRecipeOwner(userId, recipeId, {
+      forbiddenMessage: '조회 권한이 없습니다.',
     });
-
-    if (!recipe) {
-      return NextResponse.json(
-        { success: false, message: '존재하지 않는 레시피입니다.' },
-        { status: 404 },
-      );
-    }
 
     const steps = await prisma.recipe_steps.findMany({
       where: { recipe_id: recipeId },
@@ -100,6 +88,11 @@ export async function GET(_req: Request, context: RouteContext) {
 
     return NextResponse.json({ success: true, data: steps });
   } catch (error: unknown) {
+    const accessErrorResponse = toAccessControlErrorResponse(error);
+    if (accessErrorResponse) {
+      return accessErrorResponse;
+    }
+
     console.error('GET /api/recipes/[recipe_id]/steps Error:', error);
     return NextResponse.json(
       {
