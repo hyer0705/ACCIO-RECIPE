@@ -113,14 +113,29 @@ describe('extractHelpers - processExtraction AbortSignal support', () => {
     const controller = new AbortController();
     const { fetchWithSsrfProtection } = await import('@/lib/security');
 
-    vi.mocked(fetchWithSsrfProtection).mockRejectedValueOnce(new Error('Aborted'));
+    vi.mocked(fetchWithSsrfProtection).mockImplementationOnce(
+      (_url, options) =>
+        new Promise((_, reject) => {
+          const abort = () => reject(new Error('Aborted'));
 
-    await startExtractionProcess(
+          if (options?.signal?.aborted) {
+            abort();
+            return;
+          }
+
+          options?.signal?.addEventListener('abort', abort, { once: true });
+        }),
+    );
+
+    const extractionPromise = startExtractionProcess(
       1,
       'https://example.com/recipe',
       mockSSE as unknown as SSEWriter,
       controller.signal,
     );
+    controller.abort();
+
+    await extractionPromise;
 
     expect(mockSSE.close).toHaveBeenCalledTimes(1);
   });
