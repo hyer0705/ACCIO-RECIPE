@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 vi.mock('@/lib/prisma', () => ({
   default: {
     recipes: {
+      findUnique: vi.fn(),
       create: vi.fn(),
     },
     $transaction: vi.fn(),
@@ -48,6 +49,30 @@ describe('recipeService', () => {
         { name: '소금', amount: null, unit: null },
         { name: '버터', amount: 1.5, unit: '큰술' },
       ]);
+    });
+  });
+
+  describe('getRecipeDetail', () => {
+    test('다른 사용자의 레시피면 null을 반환한다', async () => {
+      vi.mocked(prisma.recipes.findUnique).mockResolvedValue({
+        recipe_id: 7,
+        user_id: 2,
+        title: '된장찌개',
+        source_url: null,
+        thumbnail_url: null,
+        difficulty: 'Easy',
+        servings: 2,
+        status: 'COMPLETED',
+        errorReason: null,
+        created_at: new Date(),
+        recipe_ingredients: [],
+        recipe_steps: [],
+        cooking_logs: [],
+      } as never);
+
+      const recipe = await recipeService.getRecipeDetail(7, 1);
+
+      expect(recipe).toBeNull();
     });
   });
 });

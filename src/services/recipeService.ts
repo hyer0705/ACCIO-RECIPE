@@ -303,6 +303,7 @@ export async function getRecipeDetail(
   });
 
   if (!recipe) return null;
+  if (recipe.user_id !== userId) return null;
 
   const baseServings = recipe.servings ?? 1;
   const targetServings =
