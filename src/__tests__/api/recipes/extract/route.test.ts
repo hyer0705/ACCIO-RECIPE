@@ -120,6 +120,34 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     expect(data.error).toBe('URL을 제공해야 합니다.');
   });
 
+  test('세션이 없으면 401 에러를 반환한다', async () => {
+    const { getServerSession } = await import('next-auth/next');
+    vi.mocked(getServerSession).mockResolvedValueOnce(null);
+
+    const req = createRequest({ url: 'https://example.com/recipe' });
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(401);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe('인증이 필요합니다.');
+  });
+
+  test('잘못된 JSON 요청 형식이면 400 에러를 반환한다', async () => {
+    const req = new Request('http://localhost:3000/api/recipes/extract', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{invalid-json',
+    });
+
+    const res = await POST(req);
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.error).toBe('잘못된 요청 형식입니다.');
+  });
+
   test('유효하지 않은 빈 웹페이지 텍스트일 경우 400 에러를 반환한다', async () => {
     const req = createRequest({ url: 'https://fake-blog.com' });
 
