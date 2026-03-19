@@ -189,6 +189,12 @@ describe('DELETE /api/fridge/[item_id]', () => {
     expect(res.status).toBe(401);
   });
 
+  test('item_id가 문자열이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await DELETE(makeReq(), mockParams('abc'));
+    expect(res.status).toBe(400);
+  });
+
   test('존재하지 않는 item이면 404', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     mockFindUnique.mockResolvedValueOnce(null);
