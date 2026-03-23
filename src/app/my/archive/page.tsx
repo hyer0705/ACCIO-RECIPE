@@ -50,7 +50,7 @@ export default function MyArchivePage() {
       <h1 className="text-2xl font-bold text-[#3C2D23] mb-8">루시님의 요리 성장 서재</h1>
 
       {/* Stats Card */}
-      <div className="bg-white rounded-[20px] p-8 mb-10 shadow-sm flex items-center gap-16">
+      <div className="bg-white rounded-4xl p-8 mb-10 shadow-sm flex items-center gap-16">
         <div>
           <div className="text-sm text-gray-400 mb-1">누적 조리</div>
           <div className="text-[28px] font-bold text-[#3C2D23]">{totalCooks}회</div>
@@ -98,12 +98,12 @@ export default function MyArchivePage() {
             return (
               <div
                 key={log.log_id}
-                className="bg-white rounded-[20px] flex items-stretch overflow-hidden shadow-sm min-h-40 max-w-5xl"
+                className="bg-white rounded-4xl flex items-stretch overflow-hidden shadow-sm min-h-40 max-w-5xl"
               >
                 {/* Left colored border */}
                 <div className={`w-4 ${borderColor} shrink-0`}></div>
 
-                <div className="flex-1 flex items-center p-6 gap-[30px]">
+                <div className="flex-1 flex items-center p-6 gap-7.5">
                   <div className="flex-1 shrink-0">
                     <Link
                       href={`/my/archive/${log.recipe_id}`}
@@ -118,7 +118,7 @@ export default function MyArchivePage() {
                     </Link>
                   </div>
 
-                  <div className="w-[450px] shrink-0">
+                  <div className="w-112.5 shrink-0">
                     {log.lesson_note ? (
                       <Link href={`/my/archive/${log.recipe_id}`} className="block">
                         <div
@@ -147,7 +147,7 @@ export default function MyArchivePage() {
                     )}
                   </div>
 
-                  <div className="w-[220px] shrink-0 flex justify-end">
+                  <div className="w-55 shrink-0 flex justify-end">
                     {log.recipe_id && (
                       <Link
                         href={`/recipes/preview/${log.recipe_id}`}

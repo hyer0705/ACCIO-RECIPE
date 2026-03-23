@@ -61,7 +61,7 @@ export default function GlobalExtractionToast() {
   return (
     <button
       type="button"
-      className={`fixed bottom-6 right-6 z-50 w-[400px] h-[120px] bg-white rounded-2xl shadow-2xl border border-gray-200 transition-all duration-500 ease-out cursor-pointer group flex flex-col justify-center text-left ${
+      className={`fixed bottom-6 right-6 z-50 w-100 h-30 bg-white rounded-2xl shadow-2xl border border-gray-200 transition-all duration-500 ease-out cursor-pointer group flex flex-col justify-center text-left ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'
       }`}
       onClick={handleClick}
@@ -93,7 +93,7 @@ export default function GlobalExtractionToast() {
           <h4 className="text-[#10B981] font-extrabold text-[16px] flex items-center gap-1 mb-1">
             <span className="text-[14px]">▶</span> 레시피 구조화 완료!
           </h4>
-          <p className="font-bold text-[#3C2D23] text-[15px] truncate max-w-[210px]">
+          <p className="font-bold text-[#3C2D23] text-[15px] truncate max-w-52.5">
             {activeTitle || '새로운 레시피'}
           </p>
           <p className="text-gray-500 text-[13px] font-medium mt-1">
@@ -102,7 +102,7 @@ export default function GlobalExtractionToast() {
         </div>
 
         {/* 화살표 아이콘 */}
-        <div className="w-[30px] h-[30px] rounded-full bg-[#FFF5F5] flex shrink-0 items-center justify-center group-hover:bg-[#FFEAE0] transition-colors">
+        <div className="w-7.5 h-7.5 rounded-full bg-[#FFF5F5] flex shrink-0 items-center justify-center group-hover:bg-[#FFEAE0] transition-colors">
           <ChevronRight size={18} className="text-[#FF5A28]" strokeWidth={3} />
         </div>
       </div>
