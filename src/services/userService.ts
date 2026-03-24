@@ -1,4 +1,5 @@
 import prisma from '@/lib/prisma';
+import { notFound } from '@/lib/auth/errors';
 
 /**
  * 사용자 프로필 및 설정 정보 조회
@@ -25,7 +26,7 @@ export async function getUserProfile(userId: number) {
     },
   });
 
-  if (!userProfile) throw new Error('NOT_FOUND');
+  if (!userProfile) throw notFound('존재하지 않는 사용자입니다.');
 
   return userProfile;
 }
@@ -39,7 +40,7 @@ export async function deleteUser(userId: number) {
     select: { user_id: true },
   });
 
-  if (!existingUser) throw new Error('NOT_FOUND');
+  if (!existingUser) throw notFound('존재하지 않는 사용자입니다.');
 
   await prisma.users.delete({
     where: { user_id: userId },

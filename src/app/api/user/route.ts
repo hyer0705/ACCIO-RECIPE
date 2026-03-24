@@ -27,7 +27,11 @@ export async function DELETE() {
         { status: 200 },
       );
     } catch (e: unknown) {
-      if (e instanceof Error && e.message === 'NOT_FOUND') {
+      const code =
+        typeof e === 'object' && e !== null && 'code' in e
+          ? (e as { code?: string }).code
+          : undefined;
+      if (code === 'NOT_FOUND') {
         return NextResponse.json(
           { success: false, message: '존재하지 않는 사용자입니다.' },
           { status: 404 },

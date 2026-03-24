@@ -17,7 +17,11 @@ export async function GET() {
       const userProfile = await userService.getUserProfile(userId);
       return NextResponse.json({ user: userProfile }, { status: 200 });
     } catch (e: unknown) {
-      if (e instanceof Error && e.message === 'NOT_FOUND') {
+      const code =
+        typeof e === 'object' && e !== null && 'code' in e
+          ? (e as { code?: string }).code
+          : undefined;
+      if (code === 'NOT_FOUND') {
         return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
       throw e;
