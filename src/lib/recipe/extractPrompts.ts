@@ -27,7 +27,11 @@ export const GEMINI_SCHEMA: Schema = {
       type: Type.STRING,
       description: '요리 또는 레시피의 제목. 명확하지 않으면 적절히 생성.',
     },
-    difficulty: { type: Type.STRING, description: '요리 난이도 (Easy, Medium, Hard 중 하나)' },
+    difficulty: {
+      type: Type.STRING,
+      enum: ['Easy', 'Medium', 'Hard'],
+      description: '요리 난이도',
+    },
     servings: { type: Type.INTEGER, description: '레시피 기준 인원 수' },
     ingredients: {
       type: Type.ARRAY,
