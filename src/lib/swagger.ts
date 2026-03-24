@@ -1,7 +1,7 @@
 import swaggerJSDoc from 'swagger-jsdoc';
 
 const swaggerOptions = {
-  swaggerDefinition: {
+  definition: {
     openapi: '3.0.0',
     info: {
       title: 'Accio Recipe API',
