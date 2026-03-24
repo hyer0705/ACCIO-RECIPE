@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { z } from 'zod';
 
 const settingsSchema = z.object({
-  nickname: z.string().min(1).max(50).optional(),
+  nickname: z.string().trim().min(1).max(50).optional(),
   profile_image: z.string().url().nullable().optional(),
   alert_timer: z.boolean().optional(),
   alert_expiry: z.boolean().optional(),
