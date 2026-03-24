@@ -68,10 +68,19 @@ vi.mock('@/lib/authOptions', () => ({
 
 // 4. Mocking Prisma
 const mockPrisma = vi.hoisted(() => ({
+  users: {
+    findUnique: vi.fn(),
+  },
   recipes: {
     create: vi.fn(),
     update: vi.fn(),
     delete: vi.fn(),
+  },
+  recipe_ingredients: {
+    createMany: vi.fn(),
+  },
+  recipe_steps: {
+    createMany: vi.fn(),
   },
   $transaction: vi.fn((cb) => cb(mockPrisma)),
 }));
@@ -86,9 +95,12 @@ describe('POST /api/recipes/extract (Gemini)', () => {
     process.env.GEMINI_API_KEY = 'test-gemini-api-key';
 
     // Prisma mocks 초기화
+    mockPrisma.users.findUnique.mockResolvedValue({ user_id: 1 });
     mockPrisma.recipes.create.mockResolvedValue({ recipe_id: 1, status: 'PENDING' });
     mockPrisma.recipes.update.mockResolvedValue({});
     mockPrisma.recipes.delete.mockResolvedValue({});
+    mockPrisma.recipe_ingredients.createMany.mockResolvedValue({ count: 1 });
+    mockPrisma.recipe_steps.createMany.mockResolvedValue({ count: 1 });
 
     // global.fetch 기본 mock 복구
     vi.mocked(global.fetch).mockImplementation(

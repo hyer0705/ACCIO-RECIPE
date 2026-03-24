@@ -15,17 +15,27 @@ vi.mock('next-auth/next', () => ({
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockLogsFind, mockLogsCount, mockFridgeFind, mockLogsFindFirst, mockRecipesFind } =
-  vi.hoisted(() => ({
-    mockLogsFind: vi.fn(),
-    mockLogsCount: vi.fn(),
-    mockFridgeFind: vi.fn(),
-    mockLogsFindFirst: vi.fn(),
-    mockRecipesFind: vi.fn(),
-  }));
+const {
+  mockLogsFind,
+  mockLogsCount,
+  mockFridgeFind,
+  mockLogsFindFirst,
+  mockRecipesFind,
+  mockUsersFindUnique,
+} = vi.hoisted(() => ({
+  mockLogsFind: vi.fn(),
+  mockLogsCount: vi.fn(),
+  mockFridgeFind: vi.fn(),
+  mockLogsFindFirst: vi.fn(),
+  mockRecipesFind: vi.fn(),
+  mockUsersFindUnique: vi.fn(),
+}));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     cooking_logs: {
       findMany: mockLogsFind,
       count: mockLogsCount,
@@ -100,6 +110,7 @@ function setHappyPath() {
 describe('GET /api/dashboard', () => {
   beforeEach(() => {
     vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
   });
 
   // ── 인증 ──────────────────────────────────

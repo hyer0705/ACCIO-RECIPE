@@ -39,6 +39,12 @@ vi.mock('@/lib/prisma', () => {
   };
 });
 
+import prisma from '@/lib/prisma';
+
+beforeEach(() => {
+  vi.mocked(prisma.users.findUnique).mockResolvedValue({ user_id: 1 } as never);
+});
+
 // next-auth global mock
 vi.mock('next-auth/next', () => ({
   getServerSession: vi.fn(),

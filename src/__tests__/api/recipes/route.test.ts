@@ -1,5 +1,6 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { POST } from '@/app/api/recipes/route';
+import { forbidden } from '@/lib/auth/errors';
 
 // ─────────────────────────────────────────────
 // 1. next-auth 세션 모킹
@@ -15,18 +16,21 @@ vi.mock('next-auth/next', () => ({
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockRecipesCreate, mockRecipesFindUnique, mockTransaction } = vi.hoisted(() => {
-  return { mockRecipesCreate: vi.fn(), mockRecipesFindUnique: vi.fn(), mockTransaction: vi.fn() };
-});
+const { mockUpsertRecipe, mockUsersFindUnique } = vi.hoisted(() => ({
+  mockUpsertRecipe: vi.fn(),
+  mockUsersFindUnique: vi.fn(),
+}));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
-    recipes: {
-      create: mockRecipesCreate,
-      findUnique: mockRecipesFindUnique,
+    users: {
+      findUnique: mockUsersFindUnique,
     },
-    $transaction: mockTransaction,
   },
+}));
+
+vi.mock('@/services/recipeService', () => ({
+  upsertRecipe: mockUpsertRecipe,
 }));
 
 // ─────────────────────────────────────────────
@@ -69,6 +73,7 @@ const MOCK_SESSION = {
 describe('POST /api/recipes', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
   });
 
   // ── 인증 ──────────────────────────────────
@@ -238,7 +243,7 @@ describe('POST /api/recipes', () => {
 
   test('정상 요청 시 201로 생성된 recipe_id와 title을 반환한다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesCreate.mockResolvedValueOnce({ recipe_id: 42, title: '국물 떡볶이' });
+    mockUpsertRecipe.mockResolvedValueOnce({ recipe_id: 42, title: '국물 떡볶이' });
 
     const res = await POST(createRequest(VALID_BODY));
     const data = await res.json();
@@ -249,41 +254,19 @@ describe('POST /api/recipes', () => {
     expect(data.data.title).toBe('국물 떡볶이');
   });
 
-  test('정상 요청 시 prisma.recipes.create가 올바른 인자로 호출된다', async () => {
+  test('정상 요청 시 recipeService.upsertRecipe가 올바른 인자로 호출된다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesCreate.mockResolvedValueOnce({ recipe_id: 42, title: '국물 떡볶이' });
+    mockUpsertRecipe.mockResolvedValueOnce({ recipe_id: 42, title: '국물 떡볶이' });
 
     await POST(createRequest(VALID_BODY));
 
-    expect(mockRecipesCreate).toHaveBeenCalledTimes(1);
-
-    const callArg = mockRecipesCreate.mock.calls[0][0];
-    expect(callArg.data.user_id).toBe(1); // session.user.id "1" → parseInt → 1
-    expect(callArg.data.title).toBe('국물 떡볶이');
-    expect(callArg.data.servings).toBe(2);
-    expect(callArg.data.difficulty).toBe('Easy');
-    expect(callArg.data.recipe_ingredients.create).toHaveLength(2);
-    expect(callArg.data.recipe_steps.create).toHaveLength(2);
+    expect(mockUpsertRecipe).toHaveBeenCalledTimes(1);
+    expect(mockUpsertRecipe).toHaveBeenCalledWith(1, VALID_BODY);
   });
 
   test('다른 사용자의 레시피 수정 시 403을 반환한다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesFindUnique.mockResolvedValueOnce({ user_id: 2 });
-    mockTransaction.mockImplementationOnce(async (callback) =>
-      callback({
-        recipes: {
-          update: vi.fn(),
-        },
-        recipe_ingredients: {
-          deleteMany: vi.fn(),
-          createMany: vi.fn(),
-        },
-        recipe_steps: {
-          deleteMany: vi.fn(),
-          createMany: vi.fn(),
-        },
-      }),
-    );
+    mockUpsertRecipe.mockRejectedValueOnce(forbidden('수정 권한이 없습니다.'));
 
     const res = await POST(createRequest({ ...VALID_BODY, recipe_id: 7 }));
     const data = await res.json();
@@ -297,7 +280,7 @@ describe('POST /api/recipes', () => {
 
   test('Prisma가 에러를 던지면 500을 반환한다', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
-    mockRecipesCreate.mockRejectedValueOnce(new Error('DB 연결 실패'));
+    mockUpsertRecipe.mockRejectedValueOnce(new Error('DB 연결 실패'));
 
     const res = await POST(createRequest(VALID_BODY));
     const data = await res.json();

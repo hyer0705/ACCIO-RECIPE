@@ -52,12 +52,16 @@ describe('GET /api/user/profile', () => {
       expires: '9999',
     });
 
-    vi.mocked(prisma.users.findUnique).mockResolvedValue(null);
+    vi.mocked(prisma.users.findUnique)
+      .mockResolvedValueOnce({ user_id: 999 } as Awaited<
+        ReturnType<typeof prisma.users.findUnique>
+      >)
+      .mockResolvedValueOnce(null);
 
     const response = await GET();
     const json = await response.json();
 
     expect(response.status).toBe(404);
-    expect(json.error).toBe('User not found');
+    expect(json.message).toBe('존재하지 않는 사용자입니다.');
   });
 });

@@ -24,6 +24,7 @@ const {
   mockStepsFindMany,
   mockLogsFindManyForRecipe,
   mockRecipesDelete,
+  mockUsersFindUnique,
 } = vi.hoisted(() => ({
   mockRecipesFindMany: vi.fn(),
   mockLogsFindMany: vi.fn(),
@@ -31,10 +32,14 @@ const {
   mockStepsFindMany: vi.fn(),
   mockLogsFindManyForRecipe: vi.fn(),
   mockRecipesDelete: vi.fn(),
+  mockUsersFindUnique: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     recipes: {
       findMany: mockRecipesFindMany,
       findUnique: mockRecipesFindUnique,
@@ -58,7 +63,10 @@ const mockParams = (recipeId: string) => ({
 // GET /api/recipes
 // ─────────────────────────────────────────────
 describe('GET /api/recipes', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -109,7 +117,10 @@ describe('GET /api/recipes', () => {
 // GET /api/recipes/[recipe_id]
 // ─────────────────────────────────────────────
 describe('GET /api/recipes/[recipe_id]', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   const makeReq = (servings?: string | number) =>
     new Request(

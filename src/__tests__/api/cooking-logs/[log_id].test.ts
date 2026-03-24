@@ -12,15 +12,21 @@ const { mockGetServerSession } = vi.hoisted(() => ({
 vi.mock('next-auth/next', () => ({ getServerSession: mockGetServerSession }));
 vi.mock('@/lib/authOptions', () => ({ authOptions: {} }));
 
-const { mockFindMany, mockFindUnique, mockUpdate, mockDelete } = vi.hoisted(() => ({
-  mockFindMany: vi.fn(),
-  mockFindUnique: vi.fn(),
-  mockUpdate: vi.fn(),
-  mockDelete: vi.fn(),
-}));
+const { mockFindMany, mockFindUnique, mockUpdate, mockDelete, mockUsersFindUnique } = vi.hoisted(
+  () => ({
+    mockFindMany: vi.fn(),
+    mockFindUnique: vi.fn(),
+    mockUpdate: vi.fn(),
+    mockDelete: vi.fn(),
+    mockUsersFindUnique: vi.fn(),
+  }),
+);
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     cooking_logs: {
       findMany: mockFindMany,
       findUnique: mockFindUnique,
@@ -47,7 +53,10 @@ const makeReq = (body: unknown, method = 'PUT') =>
 // GET /api/cooking-logs
 // ─────────────────────────────────────────────
 describe('GET /api/cooking-logs', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -82,7 +91,10 @@ describe('GET /api/cooking-logs', () => {
 // PUT /api/cooking-logs/[log_id]
 // ─────────────────────────────────────────────
 describe('PUT /api/cooking-logs/[log_id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -153,7 +165,10 @@ describe('PUT /api/cooking-logs/[log_id]', () => {
 // DELETE /api/cooking-logs/[log_id]
 // ─────────────────────────────────────────────
 describe('DELETE /api/cooking-logs/[log_id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   const makeDeleteReq = () =>
     new Request('http://localhost/api/cooking-logs/1', { method: 'DELETE' });

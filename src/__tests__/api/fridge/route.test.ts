@@ -17,15 +17,19 @@ vi.mock('next-auth/next', () => ({
 //    - ingredients_master.findFirst : 마스터 재료 조회
 //    - fridge_items.create          : 냉장고 항목 저장
 // ─────────────────────────────────────────────
-const { mockMasterFindFirst, mockFridgeCreate } = vi.hoisted(() => {
+const { mockMasterFindFirst, mockFridgeCreate, mockUsersFindUnique } = vi.hoisted(() => {
   return {
     mockMasterFindFirst: vi.fn(),
     mockFridgeCreate: vi.fn(),
+    mockUsersFindUnique: vi.fn(),
   };
 });
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     ingredients_master: {
       findFirst: mockMasterFindFirst,
     },
@@ -103,6 +107,7 @@ function getYesterdayString(): string {
 describe('POST /api/fridge', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
   });
 
   // ── 인증 ──────────────────────────────────
