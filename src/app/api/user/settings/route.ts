@@ -2,6 +2,16 @@ import { NextRequest, NextResponse } from 'next/server';
 import { requireSessionUser } from '@/lib/auth/session';
 import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import prisma from '@/lib/prisma';
+import { z } from 'zod';
+
+const settingsSchema = z.object({
+  nickname: z.string().min(1).max(50).optional(),
+  profile_image: z.string().url().nullable().optional(),
+  alert_timer: z.boolean().optional(),
+  alert_expiry: z.boolean().optional(),
+  auto_export_enabled: z.boolean().optional(),
+  external_link: z.string().url().nullable().optional(),
+});
 
 /**
  * @swagger
@@ -44,7 +54,11 @@ export async function PUT(req: NextRequest) {
     const { userId } = await requireSessionUser('Unauthorized');
     const body = await req.json();
 
-    // 입력받은 데이터 필터링
+    const parseResult = settingsSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+
     const {
       nickname,
       profile_image,
@@ -52,7 +66,7 @@ export async function PUT(req: NextRequest) {
       alert_expiry,
       auto_export_enabled,
       external_link,
-    } = body;
+    } = parseResult.data;
 
     const userUpdateData: { nickname?: string; profile_image?: string | null } = {};
     if (nickname !== undefined) userUpdateData.nickname = nickname;
