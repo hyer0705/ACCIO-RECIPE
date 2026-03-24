@@ -1,5 +1,20 @@
-import { describe, it, expect, vi } from 'vitest';
-import { isPrivateIp, validateSafeUrl } from '@/lib/security';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
+const mockDnsLookup = vi.hoisted(() => vi.fn());
+const mockDispatcherClose = vi.hoisted(() => vi.fn(async () => {}));
+const mockAgentInstances = vi.hoisted(() => [] as Array<Record<string, unknown>>);
+const mockAgent = vi.hoisted(() =>
+  vi.fn(
+    class MockAgent {
+      close = mockDispatcherClose;
+
+      constructor(options: unknown) {
+        Object.assign(this, options);
+        mockAgentInstances.push(this as unknown as Record<string, unknown>);
+      }
+    },
+  ),
+);
 
 // dns lookup 모킹
 vi.mock('dns/promises', () => ({
@@ -35,6 +50,28 @@ vi.mock('dns/promises', () => ({
     return records[0];
   }),
 }));
+
+vi.mock('dns', () => ({
+  lookup: mockDnsLookup,
+}));
+
+vi.mock('undici', () => ({
+  Agent: mockAgent,
+}));
+
+import { isPrivateIp, validateSafeUrl, fetchWithSsrfProtection } from '@/lib/security';
+
+beforeEach(() => {
+  mockDnsLookup.mockReset();
+  mockDispatcherClose.mockClear();
+  mockAgent.mockClear();
+  mockAgentInstances.length = 0;
+  vi.restoreAllMocks();
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 describe('isPrivateIp', () => {
   it('should return true for private IPv4 addresses', () => {
@@ -107,5 +144,65 @@ describe('validateSafeUrl', () => {
     await expect(validateSafeUrl('https://this-domain-does-not-exist-123.com')).rejects.toThrow(
       '존재하지 않는 도메인',
     );
+  });
+});
+
+describe('fetchWithSsrfProtection', () => {
+  it('should close the dispatcher after a successful request', async () => {
+    const fetchMock = vi.fn(async () => new Response('ok', { status: 200 }));
+    vi.stubGlobal('fetch', fetchMock);
+
+    await fetchWithSsrfProtection('https://google.com/search');
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(mockAgent).toHaveBeenCalledTimes(1);
+    expect(mockDispatcherClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('should reject fallback DNS results that resolve to private IPs', async () => {
+    let dispatchedLookup:
+      | ((hostname: string, options: unknown, callback: (...args: unknown[]) => void) => void)
+      | undefined;
+
+    const fetchMock = vi.fn(async (_input, init?: RequestInit) => {
+      const dispatcher = (
+        init as RequestInit & {
+          dispatcher?: {
+            connect?: {
+              lookup?: typeof dispatchedLookup;
+            };
+          };
+        }
+      )?.dispatcher;
+
+      dispatchedLookup = dispatcher?.connect?.lookup;
+
+      return new Response('ok', { status: 200 });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    mockDnsLookup.mockImplementationOnce(
+      (
+        _hostname: string,
+        _options: unknown,
+        callback: (err: Error | null, address?: string, family?: number) => void,
+      ) => {
+        callback(null, '127.0.0.1', 4);
+      },
+    );
+
+    await fetchWithSsrfProtection('https://google.com/search');
+
+    expect(dispatchedLookup).toBeTypeOf('function');
+
+    const result = await new Promise<{ err: unknown; addresses: unknown[] }>((resolve) => {
+      dispatchedLookup?.('cdn.google.com', { all: false }, (err: unknown, addresses: unknown[]) => {
+        resolve({ err, addresses });
+      });
+    });
+
+    expect(result.err).toBeInstanceOf(Error);
+    expect((result.err as Error).message).toContain('허용되지 않는 IP 주소');
+    expect(result.addresses).toEqual([]);
   });
 });

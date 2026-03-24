@@ -39,6 +39,14 @@ export function isPrivateIp(ip: string): boolean {
   }
 }
 
+function ensurePublicIp(ip: string): string {
+  if (isPrivateIp(ip)) {
+    throw new Error('허용되지 않는 IP 주소입니다.');
+  }
+
+  return ip;
+}
+
 /**
  * URL이 안전한지 검증합니다.
  * 1. 프로토콜이 http 또는 https인지 확인
@@ -106,31 +114,60 @@ export async function fetchWithSsrfProtection(
     // DNS Rebinding 방지를 위해 검증된 IP로 직접 연결하는 Agent 사용
     const dispatcher = new Agent({
       connect: {
-        lookup: (hostname, options, callback) => {
+        lookup: (hostname, lookupOptions, callback) => {
           if (hostname === validatedUrl.hostname) {
             callback(null, [{ address: safeIp, family: safeIp.includes(':') ? 6 : 4 }]);
             return;
           }
-          // 다른 호스트명(서브리소드 등)에 대해서는 기본 lookup 사용
-          dnsLookupCallback(hostname, options, (err, address, family) => {
+
+          dnsLookupCallback(hostname, lookupOptions, (err, address, family) => {
             if (err) {
               callback(err, []);
-            } else if (Array.isArray(address)) {
-              callback(null, address);
-            } else {
-              callback(null, [{ address: address as string, family: family as 4 | 6 }]);
+              return;
+            }
+
+            try {
+              if (Array.isArray(address)) {
+                callback(
+                  null,
+                  address.map((result) => ({
+                    ...result,
+                    address: ensurePublicIp(result.address),
+                  })),
+                );
+                return;
+              }
+
+              callback(null, [
+                {
+                  address: ensurePublicIp(address as string),
+                  family: family as 4 | 6,
+                },
+              ]);
+            } catch (validationError) {
+              callback(
+                validationError instanceof Error
+                  ? validationError
+                  : new Error('허용되지 않는 IP 주소입니다.'),
+                [],
+              );
             }
           });
         },
       },
     });
 
-    const response = await fetch(currentUrl, {
-      ...options,
-      // @ts-expect-error: Dispatcher is an undici-specific extension to fetch
-      dispatcher,
-      redirect: 'manual', // 리다이렉트를 수동으로 처리
-    });
+    let response: Response;
+    try {
+      response = await fetch(currentUrl, {
+        ...options,
+        // @ts-expect-error: Dispatcher is an undici-specific extension to fetch
+        dispatcher,
+        redirect: 'manual', // 리다이렉트를 수동으로 처리
+      });
+    } finally {
+      await dispatcher.close();
+    }
 
     if (!response) {
       throw new Error('네트워크 응답이 없습니다.');
