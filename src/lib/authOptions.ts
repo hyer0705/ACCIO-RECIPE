@@ -33,7 +33,12 @@ export const authOptions: NextAuthOptions = {
       try {
         // 기존 유저 확인
         let existingUser = await prisma.users.findUnique({
-          where: { social_id: socialId },
+          where: {
+            social_provider_social_id: {
+              social_provider: provider,
+              social_id: socialId,
+            },
+          },
         });
 
         if (!existingUser) {

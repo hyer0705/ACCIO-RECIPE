@@ -118,7 +118,7 @@ model users {
   nickname         String                @db.VarChar(50)
   email            String?               @db.VarChar(100)
   social_provider  users_social_provider
-  social_id        String                @unique(map: "social_id") @db.VarChar(255)
+  social_id        String                @db.VarChar(255)
   profile_image    String?               @db.Text
   created_at       DateTime?             @default(now()) @db.Timestamp(0)
   terms_agreements Boolean               @default(true)
@@ -127,6 +127,8 @@ model users {
   fridge_items     fridge_items[]
   recipes          recipes[]
   user_settings    user_settings?
+
+  @@unique([social_provider, social_id])
 }
 
 enum RecipeStatus {
