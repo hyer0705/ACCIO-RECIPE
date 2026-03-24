@@ -1,4 +1,6 @@
-import { lookup } from 'dns/promises';
+import { lookup as dnsLookupPromise } from 'dns/promises';
+import { lookup as dnsLookupCallback } from 'dns';
+import { Agent } from 'undici';
 import ipaddr from 'ipaddr.js';
 
 /**
@@ -43,7 +45,7 @@ export function isPrivateIp(ip: string): boolean {
  * 2. 호스트명이 IP 형식이 아닌지 확인 (IP 직접 접근 차단)
  * 3. 호스트명을 IP로 변환하여 사설 IP 대역인지 확인
  */
-export async function validateSafeUrl(urlStr: string): Promise<URL> {
+export async function validateSafeUrl(urlStr: string): Promise<{ url: URL; safeIp: string }> {
   const url = new URL(urlStr);
 
   if (url.protocol !== 'http:' && url.protocol !== 'https:') {
@@ -58,15 +60,21 @@ export async function validateSafeUrl(urlStr: string): Promise<URL> {
     if (isPrivateIp(hostname)) {
       throw new Error('사설 IP 주소로의 접근은 허용되지 않습니다.');
     }
+    return { url, safeIp: hostname };
   }
 
   // DNS 조회를 통해 실제 IP 확인 (SSRF 방지)
+  let safeIp: string | null = null;
   try {
-    const addresses = await lookup(hostname, { all: true });
+    const addresses = await dnsLookupPromise(hostname, { all: true });
     for (const result of addresses) {
       if (isPrivateIp(result.address)) {
         throw new Error(`허용되지 않는 IP 주소(${result.address})에 연결하려고 시도했습니다.`);
       }
+      if (!safeIp) safeIp = result.address;
+    }
+    if (!safeIp) {
+      throw new Error('연결 가능한 IP 주소를 찾지 못했습니다.');
     }
   } catch (err) {
     // DNS 분석 실패는 일단 서버 오류로 처리하거나 무시할 수 있으나 보안상 차단이 안전함
@@ -77,7 +85,7 @@ export async function validateSafeUrl(urlStr: string): Promise<URL> {
     throw err;
   }
 
-  return url;
+  return { url, safeIp };
 }
 
 /**
@@ -93,10 +101,34 @@ export async function fetchWithSsrfProtection(
   let redirectCount = 0;
 
   while (redirectCount <= maxRedirects) {
-    await validateSafeUrl(currentUrl);
+    const { url: validatedUrl, safeIp } = await validateSafeUrl(currentUrl);
+
+    // DNS Rebinding 방지를 위해 검증된 IP로 직접 연결하는 Agent 사용
+    const dispatcher = new Agent({
+      connect: {
+        lookup: (hostname, options, callback) => {
+          if (hostname === validatedUrl.hostname) {
+            callback(null, [{ address: safeIp, family: safeIp.includes(':') ? 6 : 4 }]);
+            return;
+          }
+          // 다른 호스트명(서브리소드 등)에 대해서는 기본 lookup 사용
+          dnsLookupCallback(hostname, options, (err, address, family) => {
+            if (err) {
+              callback(err, []);
+            } else if (Array.isArray(address)) {
+              callback(null, address);
+            } else {
+              callback(null, [{ address: address as string, family: family as 4 | 6 }]);
+            }
+          });
+        },
+      },
+    });
 
     const response = await fetch(currentUrl, {
       ...options,
+      // @ts-expect-error: Dispatcher is an undici-specific extension to fetch
+      dispatcher,
       redirect: 'manual', // 리다이렉트를 수동으로 처리
     });
 

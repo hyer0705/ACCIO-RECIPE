@@ -40,7 +40,7 @@ export async function POST(req: Request) {
 
   // URL 검증 및 SSRF 방지 (스트림 시작 전 수행하여 위험한 요청 조기 차단)
   try {
-    const parsedUrl = await validateSafeUrl(url);
+    const { url: parsedUrl } = await validateSafeUrl(url);
     url = parsedUrl.toString();
   } catch (err: unknown) {
     const error = err as Error;

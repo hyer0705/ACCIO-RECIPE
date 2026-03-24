@@ -559,7 +559,7 @@ export async function startExtractionProcess(
 ) {
   let recipeId: number | null = null;
   try {
-    const validatedUrl = await validateSafeUrl(url);
+    const { url: validatedUrl } = await validateSafeUrl(url);
     const finalUrl = validatedUrl.toString();
 
     sse.write({ step: 1, total: 4, message: '원본 링크에서 정보를 추출하고 있어요 🌐' });

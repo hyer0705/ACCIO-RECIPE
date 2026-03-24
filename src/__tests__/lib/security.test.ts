@@ -78,8 +78,9 @@ describe('isPrivateIp', () => {
 
 describe('validateSafeUrl', () => {
   it('should allow safe public URLs', async () => {
-    const url = await validateSafeUrl('https://google.com/search');
+    const { url, safeIp } = await validateSafeUrl('https://google.com/search');
     expect(url.hostname).toBe('google.com');
+    expect(safeIp).toBe('8.8.8.8');
   });
 
   it('should throw for non-http/https protocols', async () => {
