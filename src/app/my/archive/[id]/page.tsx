@@ -2,6 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query';
 import React, { useState, useEffect, useRef } from 'react';
+import { useSession } from 'next-auth/react';
 
 import ArchiveDetailHeader from './_components/ArchiveDetailHeader';
 import TabMenu, { TabType } from './_components/TabMenu';
@@ -45,10 +46,12 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
   const recipeId = Number(unwrappedParams.id);
   const isValidRecipeId =
     /^\d+$/.test(unwrappedParams.id) && Number.isInteger(recipeId) && recipeId > 0;
+  const { data: session } = useSession();
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [servings, setServings] = useState<number>(1);
   const initializedRecipeId = useRef<number | null>(null);
+  const userName = session?.user?.name?.trim() || '사용자';
 
   const {
     data: recipe,
@@ -128,7 +131,12 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
       />
 
       {activeTab === 'overview' ? (
-        <OverviewTab recipe={recipe} currentServings={servings} onServingsChange={setServings} />
+        <OverviewTab
+          recipe={recipe}
+          userName={userName}
+          currentServings={servings}
+          onServingsChange={setServings}
+        />
       ) : (
         <GrowthLogTab logs={logsData} cookCount={logsData.length} />
       )}

@@ -21,12 +21,14 @@ interface OverviewTabProps {
       instruction: string;
     }[];
   };
+  userName: string;
   currentServings: number;
   onServingsChange: (val: number) => void;
 }
 
 export default function OverviewTab({
   recipe,
+  userName,
   currentServings,
   onServingsChange,
 }: OverviewTabProps) {
@@ -83,7 +85,7 @@ export default function OverviewTab({
       {recipe.latest_log && recipe.latest_log.lesson_note && (
         <div className={`border ${alertBorder} ${alertBg} rounded-[16px] p-5 mb-8 opacity-90`}>
           <div className={`flex items-center gap-1.5 text-[14px] font-bold ${alertText} mb-2`}>
-            <span>{emoji} </span> 지난번 루시님의 메모 (가장 최근)
+            <span>{emoji} </span> 지난번 {userName}님의 메모 (가장 최근)
             <span className="text-[#A59A94] font-normal ml-1">
               | {dateStr} · {emoji} {label}
             </span>
