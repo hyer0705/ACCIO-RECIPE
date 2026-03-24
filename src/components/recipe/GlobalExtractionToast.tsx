@@ -59,29 +59,29 @@ export default function GlobalExtractionToast() {
   };
 
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       className={`fixed bottom-6 right-6 z-50 w-100 h-30 bg-white rounded-2xl shadow-2xl border border-gray-200 transition-all duration-500 ease-out cursor-pointer group flex flex-col justify-center text-left ${
         isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0 pointer-events-none'
       }`}
       onClick={handleClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          handleClick();
+        }
+      }}
       aria-label="구조화 완료된 레시피 확인하기"
     >
-      <div
+      <button
+        type="button"
         className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 z-10 p-1 rounded-full hover:bg-gray-100"
         onClick={handleClose}
         aria-label="닫기"
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleClose(e);
-          }
-        }}
       >
         <X size={18} strokeWidth={2.5} />
-      </div>
+      </button>
 
       <div className="flex items-center w-full px-5 gap-4">
         {/* 썸네일 영역 */}
@@ -106,6 +106,6 @@ export default function GlobalExtractionToast() {
           <ChevronRight size={18} className="text-[#FF5A28]" strokeWidth={3} />
         </div>
       </div>
-    </button>
+    </div>
   );
 }
