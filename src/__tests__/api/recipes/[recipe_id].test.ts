@@ -111,8 +111,18 @@ describe('GET /api/recipes', () => {
 describe('GET /api/recipes/[recipe_id]', () => {
   beforeEach(() => vi.clearAllMocks());
 
-  const makeReq = (servings?: number) =>
-    new Request(`http://localhost/api/recipes/1${servings ? `?servings=${servings}` : ''}`);
+  const makeReq = (servings?: string | number) =>
+    new Request(
+      `http://localhost/api/recipes/1${servings !== undefined ? `?servings=${servings}` : ''}`,
+    );
+
+  test('유효하지 않은 recipe_id (숫자 아님) 이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await getRecipeDetail(makeReq(), mockParams('12abc'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toBe('유효하지 않은 recipe_id입니다.');
+  });
 
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -172,6 +182,22 @@ describe('GET /api/recipes/[recipe_id]', () => {
     expect(res.status).toBe(200);
     expect(body.data.requested_servings).toBe(4);
     expect(body.data.ingredients[0].amount).toBe(400); // 200g * 2
+  });
+
+  test('유효하지 않은 servings (숫자 아님) 이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await getRecipeDetail(makeReq('abc'), mockParams('1'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toBe('유효하지 않은 servings입니다.');
+  });
+
+  test('유효하지 않은 servings (음수) 이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await getRecipeDetail(makeReq('-1'), mockParams('1'));
+    expect(res.status).toBe(400);
+    const body = await res.json();
+    expect(body.message).toBe('유효하지 않은 servings입니다.');
   });
 });
 
@@ -294,9 +320,15 @@ describe('DELETE /api/recipes/[recipe_id]', () => {
     expect(res.status).toBe(401);
   });
 
-  test('유효하지 않은 recipe_id이면 400', async () => {
+  test('유효하지 않은 recipe_id (숫자 아님) 이면 400', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     const res = await deleteRecipe(makeReq(), mockParams('abc'));
+    expect(res.status).toBe(400);
+  });
+
+  test('유효하지 않은 recipe_id (혼합 문자열) 이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await deleteRecipe(makeReq(), mockParams('12abc'));
     expect(res.status).toBe(400);
   });
 

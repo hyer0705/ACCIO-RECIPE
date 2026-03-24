@@ -11,17 +11,25 @@ export async function GET(req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { recipe_id: recipeIdParam } = await context.params;
-    const recipeId = parseInt(recipeIdParam, 10);
-
-    if (isNaN(recipeId) || recipeId <= 0) {
+    if (!/^\d+$/.test(recipeIdParam)) {
       return NextResponse.json(
         { success: false, message: '유효하지 않은 recipe_id입니다.' },
         { status: 400 },
       );
     }
+    const recipeId = Number(recipeIdParam);
 
     const { searchParams } = new URL(req.url);
-    const requestedServings = parseInt(searchParams.get('servings') ?? '0', 10);
+    const servingsParam = searchParams.get('servings');
+    const requestedServings =
+      servingsParam === null ? 0 : /^\d+$/.test(servingsParam) ? Number(servingsParam) : NaN;
+
+    if (isNaN(requestedServings) || requestedServings < 0) {
+      return NextResponse.json(
+        { success: false, message: '유효하지 않은 servings입니다.' },
+        { status: 400 },
+      );
+    }
 
     const recipe = await recipeService.getRecipeDetail(recipeId, userId, requestedServings);
 
@@ -58,14 +66,13 @@ export async function DELETE(_req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { recipe_id: recipeIdParam } = await context.params;
-    const recipeId = parseInt(recipeIdParam, 10);
-
-    if (isNaN(recipeId) || recipeId <= 0) {
+    if (!/^\d+$/.test(recipeIdParam)) {
       return NextResponse.json(
         { success: false, message: '유효하지 않은 recipe_id입니다.' },
         { status: 400 },
       );
     }
+    const recipeId = Number(recipeIdParam);
 
     await recipeService.deleteRecipe(recipeId, userId);
     return NextResponse.json(
