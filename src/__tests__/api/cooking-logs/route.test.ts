@@ -253,6 +253,53 @@ describe('POST /api/logs', () => {
     expect(callArg.data.lesson_note).toBe('앞뒤 공백');
   });
 
+  // ── JSON 파싱 및 구조 검증 ──────────────────
+
+  test('잘못된 JSON 형식 요청 시 400을 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const res = await POST(
+      new Request('http://localhost:3000/api/cooking-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{ invalid: json }',
+      }),
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.message).toBe('잘못된 JSON 형식입니다.');
+  });
+
+  test('JSON null 리터럴 요청 시 400을 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const res = await POST(
+      new Request('http://localhost:3000/api/cooking-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: 'null',
+      }),
+    );
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.message).toBe('잘못된 요청 형식입니다.');
+  });
+
+  test('JSON 배열 요청 시 400을 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const res = await POST(createRequest([]));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.success).toBe(false);
+    expect(data.message).toBe('잘못된 요청 형식입니다.');
+  });
+
   // ── 서버 에러 ────────────────────────────────
 
   test('prisma.cooking_logs.create가 에러를 던지면 500을 반환한다', async () => {

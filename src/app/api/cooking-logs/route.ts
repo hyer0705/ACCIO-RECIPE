@@ -46,7 +46,24 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId } = await requireSessionUser();
-    const body: Record<string, unknown> = await req.json();
+    let parsedBody: unknown;
+    try {
+      parsedBody = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: '잘못된 JSON 형식입니다.' },
+        { status: 400 },
+      );
+    }
+
+    if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+      return NextResponse.json(
+        { success: false, message: '잘못된 요청 형식입니다.' },
+        { status: 400 },
+      );
+    }
+
+    const body = parsedBody as Record<string, unknown>;
 
     // ── 1. 입력 유효성 검사 (핸들러 레벨) ───────────────────────────
     const errors: string[] = [];
