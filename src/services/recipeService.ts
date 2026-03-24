@@ -446,9 +446,9 @@ export async function deleteRecipe(recipeId: number, userId: number) {
 }
 
 // ── 조리용 레시피 조회 ─────────────────────────────────────────────────────────
-export async function getRecipeForCooking(recipeId: number) {
-  return await prisma.recipes.findUnique({
-    where: { recipe_id: recipeId },
+export async function getRecipeForCooking(recipeId: number, userId: number) {
+  return await prisma.recipes.findFirst({
+    where: { recipe_id: recipeId, user_id: userId },
     include: {
       recipe_steps: { orderBy: { step_order: 'asc' } },
       recipe_ingredients: true,

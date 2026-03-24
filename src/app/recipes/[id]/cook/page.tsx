@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { getRecipeForCooking } from '@/services/recipeService';
+import { requireSessionUser } from '@/lib/auth/session';
 import { StepIngredientInfo } from '@/types/recipe';
 import CookingStepViewerClient from '@/components/recipe/cook/CookingStepViewerClient';
 
@@ -11,7 +12,13 @@ export default async function CookPage({ params }: { params: Promise<{ id: strin
     notFound();
   }
 
-  const recipe = await getRecipeForCooking(recipeId);
+  const { userId } = await requireSessionUser().catch(() => ({ userId: null }));
+
+  if (!userId) {
+    notFound();
+  }
+
+  const recipe = await getRecipeForCooking(recipeId, userId);
 
   if (!recipe) {
     notFound();

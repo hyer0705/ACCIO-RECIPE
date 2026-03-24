@@ -6,6 +6,7 @@ vi.mock('@/lib/prisma', () => ({
   default: {
     recipes: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
     },
     $transaction: vi.fn(),
@@ -196,6 +197,45 @@ describe('recipeService', () => {
       expect(recipe?.base_servings).toBe(1);
       expect(recipe?.requested_servings).toBe(3);
       expect(recipe?.ingredients[0].amount).toBe(6);
+    });
+  });
+
+  describe('getRecipeForCooking', () => {
+    test('자신의 레시피면 데이터를 반환한다', async () => {
+      const mockRecipe = {
+        recipe_id: 1,
+        user_id: 1,
+        title: '내 레시피',
+        recipe_steps: [],
+        recipe_ingredients: [],
+      };
+      vi.mocked(prisma.recipes.findFirst).mockResolvedValue(mockRecipe as never);
+
+      const result = await recipeService.getRecipeForCooking(1, 1);
+
+      expect(prisma.recipes.findFirst).toHaveBeenCalledWith({
+        where: { recipe_id: 1, user_id: 1 },
+        include: {
+          recipe_steps: { orderBy: { step_order: 'asc' } },
+          recipe_ingredients: true,
+        },
+      });
+      expect(result).toEqual(mockRecipe);
+    });
+
+    test('다른 사용자의 레시피면 null을 반환한다 (IDOR 방지)', async () => {
+      vi.mocked(prisma.recipes.findFirst).mockResolvedValue(null as never);
+
+      const result = await recipeService.getRecipeForCooking(1, 2);
+
+      expect(prisma.recipes.findFirst).toHaveBeenCalledWith({
+        where: { recipe_id: 1, user_id: 2 },
+        include: {
+          recipe_steps: { orderBy: { step_order: 'asc' } },
+          recipe_ingredients: true,
+        },
+      });
+      expect(result).toBeNull();
     });
   });
 });
