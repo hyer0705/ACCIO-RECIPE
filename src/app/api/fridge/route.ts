@@ -50,6 +50,7 @@ export async function POST(req: Request) {
     if (!body.name || typeof body.name !== 'string' || body.name.trim() === '') {
       errors.push('재료 이름(name)은 필수입니다.');
     }
+    const trimmedName = typeof body.name === 'string' ? body.name.trim() : body.name;
     if (body.quantity !== undefined && (typeof body.quantity !== 'number' || body.quantity <= 0)) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
     }
@@ -74,7 +75,7 @@ export async function POST(req: Request) {
     }
 
     // ── 2. 서비스 호출 ────────────────────────────────────────────────
-    const newItem = await fridgeService.addFridgeItem(userId, body);
+    const newItem = await fridgeService.addFridgeItem(userId, { ...body, name: trimmedName });
 
     return NextResponse.json(
       {
