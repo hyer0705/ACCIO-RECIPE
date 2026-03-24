@@ -43,7 +43,19 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const { userId } = await requireSessionUser();
-    const body = await req.json();
+    let body: Record<string, unknown>;
+    try {
+      const parsedBody = await req.json();
+      if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+        return NextResponse.json(
+          { success: false, message: '잘못된 요청 형식입니다.' },
+          { status: 400 },
+        );
+      }
+      body = parsedBody as Record<string, unknown>;
+    } catch {
+      return NextResponse.json({ success: false, message: 'Invalid JSON body' }, { status: 400 });
+    }
 
     // ── 1. 입력값 검증 ───────────────────────────────────────────────
     const errors: string[] = [];
@@ -55,15 +67,19 @@ export async function POST(req: Request) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
     }
     if (body.expiry_date !== undefined) {
-      try {
-        const expiryDate = parseAndValidateLocalDate(body.expiry_date);
-        const today = getTodayInLocalTime();
-
-        if (expiryDate < today) {
-          errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
-        }
-      } catch {
+      if (typeof body.expiry_date !== 'string') {
         errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+      } else {
+        try {
+          const expiryDate = parseAndValidateLocalDate(body.expiry_date);
+          const today = getTodayInLocalTime();
+
+          if (expiryDate < today) {
+            errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
+          }
+        } catch {
+          errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+        }
       }
     }
 

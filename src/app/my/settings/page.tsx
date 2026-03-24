@@ -2,7 +2,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { signOut } from 'next-auth/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 // 간단한 토글 스위치 컴포넌트 (동일 파일 내 배치 혹은 분리 가능)
 function ToggleSwitch({
@@ -43,6 +43,16 @@ export default function SettingsPage() {
   const queryClient = useQueryClient();
   const [isEditingNickname, setIsEditingNickname] = useState(false);
   const [editNicknameValue, setEditNicknameValue] = useState('');
+  const [feedback, setFeedback] = useState<{ type: 'error' | 'info'; message: string } | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!feedback) return;
+
+    const timeoutId = window.setTimeout(() => setFeedback(null), 3000);
+    return () => window.clearTimeout(timeoutId);
+  }, [feedback]);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['user-profile'],
@@ -72,7 +82,10 @@ export default function SettingsPage() {
       setIsEditingNickname(false);
     },
     onError: (error) => {
-      alert('설정 변경에 실패했습니다: ' + error.message);
+      setFeedback({
+        type: 'error',
+        message: `설정 변경에 실패했습니다: ${error.message}`,
+      });
     },
   });
 
@@ -112,8 +125,12 @@ export default function SettingsPage() {
   };
 
   const handleSaveNickname = () => {
-    if (!editNicknameValue.trim()) return;
-    updateMutation.mutate({ nickname: editNicknameValue });
+    const trimmedNickname = editNicknameValue.trim();
+    if (!trimmedNickname) {
+      setFeedback({ type: 'error', message: '닉네임을 입력해주세요.' });
+      return;
+    }
+    updateMutation.mutate({ nickname: trimmedNickname });
   };
 
   const handleLogout = () => {
@@ -122,8 +139,29 @@ export default function SettingsPage() {
     signOut({ callbackUrl: '/login' });
   };
 
+  const handleDeleteAccountClick = () => {
+    if (updateMutation.isPending) return;
+
+    // TODO: 실제 회원 탈퇴 플로우가 준비되면 삭제 확인 모달/뮤테이션으로 교체
+    setFeedback({ type: 'info', message: '서비스 탈퇴 기능은 준비 중입니다.' });
+  };
+
   return (
     <div className="max-w-[1000px]">
+      {feedback && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`mb-4 rounded-2xl px-4 py-3 text-[14px] font-medium ${
+            feedback.type === 'error'
+              ? 'bg-[#FFF4F4] text-[#C2410C] border border-[#FFD5CC]'
+              : 'bg-[#FAF6E9] text-[#7C5A2C] border border-[#F0DFC2]'
+          }`}
+        >
+          {feedback.message}
+        </div>
+      )}
+
       <div className="mb-10">
         <h1 className="text-[28px] font-bold text-[#3C2D23] m-0">환경 설정</h1>
       </div>
@@ -252,7 +290,9 @@ export default function SettingsPage() {
           </button>
           <span>|</span>
           <button
+            onClick={handleDeleteAccountClick}
             disabled={updateMutation.isPending}
+            aria-disabled={updateMutation.isPending}
             className="cursor-pointer hover:text-[#A59A94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             서비스 탈퇴

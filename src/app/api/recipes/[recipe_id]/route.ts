@@ -22,9 +22,13 @@ export async function GET(req: Request, context: RouteContext) {
     const { searchParams } = new URL(req.url);
     const servingsParam = searchParams.get('servings');
     const requestedServings =
-      servingsParam === null ? 0 : /^\d+$/.test(servingsParam) ? Number(servingsParam) : NaN;
+      servingsParam === null
+        ? undefined
+        : /^\d+$/.test(servingsParam)
+          ? Number(servingsParam)
+          : NaN;
 
-    if (isNaN(requestedServings) || requestedServings < 0) {
+    if (requestedServings !== undefined && (isNaN(requestedServings) || requestedServings < 1)) {
       return NextResponse.json(
         { success: false, message: '유효하지 않은 servings입니다.' },
         { status: 400 },

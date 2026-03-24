@@ -17,15 +17,19 @@ vi.mock('next-auth/next', () => ({
 //    - recipes.findUnique   : recipe_id 존재 여부 검증
 //    - cooking_logs.create  : 요리 기록 저장
 // ──────────────────────────────────────────────
-const { mockRecipesFindUnique, mockLogsCreate } = vi.hoisted(() => {
+const { mockRecipesFindUnique, mockLogsCreate, mockUsersFindUnique } = vi.hoisted(() => {
   return {
     mockRecipesFindUnique: vi.fn(),
     mockLogsCreate: vi.fn(),
+    mockUsersFindUnique: vi.fn(),
   };
 });
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     recipes: {
       findUnique: mockRecipesFindUnique,
     },
@@ -75,6 +79,7 @@ const VALID_BODY = {
 describe('POST /api/logs', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
   });
 
   // ── 인증 ────────────────────────────────────

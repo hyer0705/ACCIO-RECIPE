@@ -8,24 +8,38 @@ interface RouteContext {
   params: Promise<{ item_id: string }>;
 }
 
+function parseItemId(itemIdParam: string): { itemId: number } | { error: NextResponse } {
+  if (!/^\d+$/.test(itemIdParam)) {
+    return {
+      error: NextResponse.json(
+        { success: false, message: '유효하지 않은 item_id입니다.' },
+        { status: 400 },
+      ),
+    };
+  }
+
+  const itemId = Number(itemIdParam);
+  if (itemId <= 0) {
+    return {
+      error: NextResponse.json(
+        { success: false, message: '유효하지 않은 item_id입니다.' },
+        { status: 400 },
+      ),
+    };
+  }
+
+  return { itemId };
+}
+
 export async function PUT(req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { item_id: itemIdParam } = await context.params;
-    if (!/^\d+$/.test(itemIdParam)) {
-      return NextResponse.json(
-        { success: false, message: '유효하지 않은 item_id입니다.' },
-        { status: 400 },
-      );
+    const parsedItemId = parseItemId(itemIdParam);
+    if ('error' in parsedItemId) {
+      return parsedItemId.error;
     }
-    const itemId = Number(itemIdParam);
-
-    if (itemId <= 0) {
-      return NextResponse.json(
-        { success: false, message: '유효하지 않은 item_id입니다.' },
-        { status: 400 },
-      );
-    }
+    const { itemId } = parsedItemId;
 
     let parsedBody: unknown;
     try {
@@ -49,6 +63,9 @@ export async function PUT(req: Request, context: RouteContext) {
 
     if (body.quantity !== undefined && (typeof body.quantity !== 'number' || body.quantity <= 0)) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
+    }
+    if (body.unit !== undefined && typeof body.unit !== 'string') {
+      errors.push('단위(unit)는 문자열이어야 합니다.');
     }
     if (body.expiry_date !== undefined) {
       if (typeof body.expiry_date !== 'string') {
@@ -114,20 +131,11 @@ export async function DELETE(_req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { item_id: itemIdParam } = await context.params;
-    if (!/^\d+$/.test(itemIdParam)) {
-      return NextResponse.json(
-        { success: false, message: '유효하지 않은 item_id입니다.' },
-        { status: 400 },
-      );
+    const parsedItemId = parseItemId(itemIdParam);
+    if ('error' in parsedItemId) {
+      return parsedItemId.error;
     }
-    const itemId = Number(itemIdParam);
-
-    if (itemId <= 0) {
-      return NextResponse.json(
-        { success: false, message: '유효하지 않은 item_id입니다.' },
-        { status: 400 },
-      );
-    }
+    const { itemId } = parsedItemId;
 
     await fridgeService.deleteFridgeItem(userId, itemId);
     return NextResponse.json({ success: true, message: '재료가 삭제되었습니다.' });

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { load } from 'cheerio';
 import prisma from '@/lib/prisma';
+import type { recipes_difficulty } from '@/generated/client/enums';
 import { assertRecipeOwner } from '@/lib/auth/authorization';
 import { SYSTEM_PROMPT, GEMINI_SCHEMA } from '@/lib/recipe/extractPrompts';
 import { SSEWriter } from '@/lib/recipe/sse';
@@ -70,7 +71,7 @@ async function callGemini(
 
 // ── difficulty 정규화 ──────────────────────────────────────────────────────────
 type AllowedDifficulty = 'Easy' | 'Medium' | 'Hard';
-function normalizeDifficulty(raw: string | undefined | null): AllowedDifficulty | null {
+function normalizeDifficulty(raw: string | undefined | null): recipes_difficulty | null {
   if (!raw) return null;
   const map: Record<string, AllowedDifficulty> = {
     easy: 'Easy',
@@ -150,7 +151,20 @@ export async function processExtraction(
 
     await checkAborted();
     sse.write({ step: 3, total: 4, message: '재료와 순서를 깔끔하게 구조화하고 있어요 ✨' });
-    const recipeData = JSON.parse(llmContent!);
+    let recipeData: {
+      title?: string;
+      difficulty?: string | null;
+      servings?: number;
+      ingredients?: DraftIngredient[];
+      steps?: DraftStep[];
+    };
+    try {
+      recipeData = JSON.parse(llmContent!);
+    } catch (parseError) {
+      console.debug(`[Recipe ${recipeId}] Failed to parse LLM response:`, parseError);
+      console.debug(`[Recipe ${recipeId}] Raw LLM response:`, llmContent);
+      throw new Error('LLM 응답 형식이 올바르지 않습니다. 다시 시도해주세요.');
+    }
 
     await checkAborted();
     const finalTitle =
@@ -373,8 +387,7 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
         data: {
           title: title.trim(),
           servings: servings,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          difficulty: difficulty as any,
+          difficulty: normalizeDifficulty(difficulty),
           source_url: source_url || null,
           thumbnail_url: thumbnail_url || null,
           status: 'COMPLETED',
@@ -414,8 +427,7 @@ export async function upsertRecipe(userId: number, body: UpsertRecipeBody) {
       user_id: userId,
       title: title.trim(),
       servings: servings,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      difficulty: difficulty as any,
+      difficulty: normalizeDifficulty(difficulty),
       source_url: source_url || null,
       thumbnail_url: thumbnail_url || null,
       recipe_ingredients: {

@@ -15,15 +15,21 @@ vi.mock('@/lib/authOptions', () => ({ authOptions: {} }));
 // ─────────────────────────────────────────────
 // 2. Prisma 모킹
 // ─────────────────────────────────────────────
-const { mockFindMany, mockFindUnique, mockUpdate, mockDelete } = vi.hoisted(() => ({
-  mockFindMany: vi.fn(),
-  mockFindUnique: vi.fn(),
-  mockUpdate: vi.fn(),
-  mockDelete: vi.fn(),
-}));
+const { mockFindMany, mockFindUnique, mockUpdate, mockDelete, mockUsersFindUnique } = vi.hoisted(
+  () => ({
+    mockFindMany: vi.fn(),
+    mockFindUnique: vi.fn(),
+    mockUpdate: vi.fn(),
+    mockDelete: vi.fn(),
+    mockUsersFindUnique: vi.fn(),
+  }),
+);
 
 vi.mock('@/lib/prisma', () => ({
   default: {
+    users: {
+      findUnique: mockUsersFindUnique,
+    },
     fridge_items: {
       findMany: mockFindMany,
       findUnique: mockFindUnique,
@@ -40,7 +46,10 @@ const mockParams = (itemId: string) => ({
 });
 
 describe('GET /api/fridge', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   test('세션 없으면 401 반환', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
@@ -91,7 +100,10 @@ describe('GET /api/fridge', () => {
 });
 
 describe('PUT /api/fridge/[item_id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   const makeReq = (body: unknown) =>
     new Request('http://localhost/api/fridge/1', {
@@ -163,9 +175,25 @@ describe('PUT /api/fridge/[item_id]', () => {
     expect(body.errors).toContain('수량(quantity)은 0보다 큰 숫자여야 합니다.');
   });
 
+  test('quantity가 0이면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(makeReq({ quantity: 0 }), mockParams('1'));
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.errors).toContain('수량(quantity)은 0보다 큰 숫자여야 합니다.');
+  });
+
   test('expiry_date가 존재하지 않는 달력 날짜이면 400', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     const res = await PUT(makeReq({ expiry_date: '2026-02-31' }), mockParams('1'));
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.errors).toContain('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+  });
+
+  test('expiry_date가 문자열이 아니면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(makeReq({ expiry_date: 20261231 }), mockParams('1'));
     const body = await res.json();
     expect(res.status).toBe(400);
     expect(body.errors).toContain('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
@@ -208,7 +236,10 @@ describe('PUT /api/fridge/[item_id]', () => {
 });
 
 describe('DELETE /api/fridge/[item_id]', () => {
-  beforeEach(() => vi.resetAllMocks());
+  beforeEach(() => {
+    vi.resetAllMocks();
+    mockUsersFindUnique.mockResolvedValue({ user_id: 1 });
+  });
 
   const makeReq = () => new Request('http://localhost/api/fridge/1', { method: 'DELETE' });
 

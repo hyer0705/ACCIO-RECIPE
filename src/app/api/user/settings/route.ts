@@ -44,6 +44,8 @@ const settingsSchema = z.object({
  *     responses:
  *       200:
  *         description: 수정 성공
+ *       400:
+ *         description: Bad Request (validation failed, including malformed JSON or Zod validation errors)
  *       401:
  *         description: 인증되지 않은 사용자
  *       500:
@@ -52,7 +54,12 @@ const settingsSchema = z.object({
 export async function PUT(req: NextRequest) {
   try {
     const { userId } = await requireSessionUser('Unauthorized');
-    const body = await req.json();
+    let body: unknown;
+    try {
+      body = await req.json();
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
+    }
 
     const parseResult = settingsSchema.safeParse(body);
     if (!parseResult.success) {

@@ -75,8 +75,9 @@ export default function OverviewTab({
     }
   }
 
-  const dateStr = recipe.latest_log
-    ? `${new Date(recipe.latest_log.cooked_at).getFullYear()}.${String(new Date(recipe.latest_log.cooked_at).getMonth() + 1).padStart(2, '0')}.${String(new Date(recipe.latest_log.cooked_at).getDate()).padStart(2, '0')}`
+  const cookedAt = recipe.latest_log ? new Date(recipe.latest_log.cooked_at) : null;
+  const dateStr = cookedAt
+    ? `${cookedAt.getFullYear()}.${String(cookedAt.getMonth() + 1).padStart(2, '0')}.${String(cookedAt.getDate()).padStart(2, '0')}`
     : '';
 
   return (

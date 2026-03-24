@@ -3,6 +3,7 @@ import { DELETE } from '@/app/api/user/route';
 import * as userService from '@/services/userService';
 import { requireSessionUser } from '@/lib/auth/session';
 import { cookies } from 'next/headers';
+import { notFound } from '@/lib/auth/errors';
 
 vi.mock('@/services/userService', () => ({
   deleteUser: vi.fn(),
@@ -45,7 +46,7 @@ describe('DELETE /api/user', () => {
   });
 
   test('should return 404 if user not found', async () => {
-    vi.mocked(userService.deleteUser).mockRejectedValue(new Error('NOT_FOUND'));
+    vi.mocked(userService.deleteUser).mockRejectedValue(notFound('존재하지 않는 사용자입니다.'));
 
     const response = await DELETE();
     const data = await response.json();

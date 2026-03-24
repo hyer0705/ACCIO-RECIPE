@@ -20,9 +20,10 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
   const unwrappedParams = React.use(params);
   const recipeId = unwrappedParams.id;
   const searchParams = useSearchParams();
-  const initialServings = searchParams.get('servings')
-    ? parseInt(searchParams.get('servings') as string, 10)
-    : null;
+  const servingsParam = searchParams.get('servings');
+  const parsedServings = servingsParam ? parseInt(servingsParam, 10) : null;
+  const initialServings =
+    parsedServings !== null && !Number.isNaN(parsedServings) ? parsedServings : null;
 
   const {
     data: recipeResponse,

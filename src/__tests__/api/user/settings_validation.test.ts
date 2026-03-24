@@ -4,9 +4,14 @@ import { NextRequest } from 'next/server';
 import prisma from '@/lib/prisma';
 import { getServerSession } from 'next-auth/next';
 
+vi.mock('@/lib/authOptions', () => ({ authOptions: {} }));
+
 describe('PUT /api/user/settings validation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(prisma.users.findUnique).mockResolvedValue({ user_id: 1 } as Awaited<
+      ReturnType<typeof prisma.users.findUnique>
+    >);
   });
 
   const setupMockSession = (userId: string) => {
@@ -61,7 +66,12 @@ describe('PUT /api/user/settings validation', () => {
       user_id: 1,
       nickname: 'new-nick',
       profile_image: 'https://example.com/img.png',
-      user_settings: {},
+      user_settings: {
+        alert_timer: false,
+        alert_expiry: true,
+        auto_export_enabled: false,
+        external_link: null,
+      },
     };
     vi.mocked(prisma.users.update).mockResolvedValue(
       updatedUser as unknown as Awaited<ReturnType<typeof prisma.users.update>>,
@@ -80,5 +90,33 @@ describe('PUT /api/user/settings validation', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.user.nickname).toBe('new-nick');
+    expect(body.user.profile_image).toBe(updatedUser.profile_image);
+    expect(body.user.user_settings).toEqual(updatedUser.user_settings);
+    expect(vi.mocked(prisma.users.update)).toHaveBeenCalledWith({
+      where: { user_id: 1 },
+      data: {
+        nickname: 'new-nick',
+        profile_image: 'https://example.com/img.png',
+        user_settings: {
+          upsert: {
+            create: {
+              alert_timer: false,
+              alert_expiry: true,
+              auto_export_enabled: false,
+              external_link: undefined,
+            },
+            update: {
+              alert_timer: false,
+            },
+          },
+        },
+      },
+      select: {
+        user_id: true,
+        nickname: true,
+        profile_image: true,
+        user_settings: true,
+      },
+    });
   });
 });

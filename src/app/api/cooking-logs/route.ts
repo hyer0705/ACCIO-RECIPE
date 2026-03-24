@@ -73,7 +73,7 @@ export async function POST(req: Request) {
       typeof body.status !== 'string' ||
       !VALID_STATUS_VALUES.includes(body.status as cooking_logs_status)
     ) {
-      errors.push('status는 SUCCESS, REGRET, FAIL 중 하나여야 합니다.');
+      errors.push(`status는 ${VALID_STATUS_VALUES.join(', ')} 중 하나여야 합니다.`);
     }
 
     if (body.recipe_id === undefined || body.recipe_id === null) {
@@ -96,7 +96,9 @@ export async function POST(req: Request) {
     }
 
     if (body.companion !== undefined) {
-      if (typeof body.companion !== 'string' || body.companion.trim().length > 50) {
+      if (typeof body.companion !== 'string') {
+        errors.push('companion must be a string');
+      } else if (body.companion.trim().length > 50) {
         errors.push('companion은 50자 이하여야 합니다.');
       }
     }

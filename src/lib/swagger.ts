@@ -38,6 +38,4 @@ Swagger UI에서 인증이 필요한 API를 테스트하려면:
   apis: ['src/app/api/**/*.ts'], // Path to the API routes
 };
 
-export const getApiDocs = async () => {
-  return swaggerJSDoc(swaggerOptions);
-};
+export const getApiDocs = () => swaggerJSDoc(swaggerOptions);

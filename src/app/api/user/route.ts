@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { requireSessionUser } from '@/lib/auth/session';
 import { toAccessControlErrorResponse } from '@/lib/auth/response';
+import { isAccessControlError } from '@/lib/auth/errors';
 import * as userService from '@/services/userService';
 
 /**
@@ -27,11 +28,7 @@ export async function DELETE() {
         { status: 200 },
       );
     } catch (e: unknown) {
-      const code =
-        typeof e === 'object' && e !== null && 'code' in e
-          ? (e as { code?: string }).code
-          : undefined;
-      if (code === 'NOT_FOUND') {
+      if (isAccessControlError(e) && e.code === 'NOT_FOUND') {
         return NextResponse.json(
           { success: false, message: '존재하지 않는 사용자입니다.' },
           { status: 404 },
