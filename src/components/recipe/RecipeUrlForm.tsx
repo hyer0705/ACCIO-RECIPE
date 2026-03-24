@@ -63,6 +63,9 @@ export default function RecipeUrlForm({ onSubmitUrl, isPending = false }: Recipe
                        bg-white focus-visible:ring-2 focus-visible:ring-[#FF5A28]/50 placeholder:text-gray-400
                        shadow-none outline-none"
             disabled={isPending}
+            aria-invalid={!!errors.url}
+            aria-describedby="url-error"
+            invalid={!!errors.url}
           />
           <button
             type="submit"
@@ -76,7 +79,10 @@ export default function RecipeUrlForm({ onSubmitUrl, isPending = false }: Recipe
 
         {/* 에러 메시지 렌더링 */}
         {errors.url && (
-          <p className="text-red-500 font-medium text-sm mt-3 absolute left-6 -bottom-8">
+          <p
+            id="url-error"
+            className="text-red-500 font-medium text-sm mt-3 absolute left-6 -bottom-8"
+          >
             {errors.url.message}
           </p>
         )}
