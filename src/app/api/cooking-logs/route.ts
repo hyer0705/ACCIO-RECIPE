@@ -97,7 +97,7 @@ export async function POST(req: Request) {
 
     if (body.companion !== undefined) {
       if (typeof body.companion !== 'string') {
-        errors.push('companion must be a string');
+        errors.push('companion은 문자열이어야 합니다.');
       } else if (body.companion.trim().length > 50) {
         errors.push('companion은 50자 이하여야 합니다.');
       }
