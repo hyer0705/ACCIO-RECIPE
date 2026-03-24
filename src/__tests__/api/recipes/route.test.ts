@@ -110,8 +110,8 @@ describe('POST /api/recipes', () => {
     expect(data.errors).toContain('최소 1개 이상의 재료(ingredients)가 필요합니다.');
   });
 
-  test('ingredients 항목 중 name이 없으면 400 에러를 반환한다', async () => {
-    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+  test('ingredients 항목 중 name이 없거나 문자열이 아니면 400 에러를 반환한다', async () => {
+    mockGetServerSession.mockResolvedValue(MOCK_SESSION);
 
     const body = {
       ...VALID_BODY,
@@ -123,6 +123,29 @@ describe('POST /api/recipes', () => {
     expect(res.status).toBe(400);
     expect(data.success).toBe(false);
     expect(data.errors).toContain('재료[0]에 이름(name)이 누락되었습니다.');
+
+    const body2 = {
+      ...VALID_BODY,
+      ingredients: [{ name: 123 }],
+    };
+    const res2 = await POST(createRequest(body2));
+    const data2 = await res2.json();
+    expect(data2.errors).toContain('재료[0]에 이름(name)이 누락되었습니다.');
+  });
+
+  test('ingredients 항목이 객체가 아니면 400 에러를 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const body = {
+      ...VALID_BODY,
+      ingredients: [null, 'not an object'],
+    };
+    const res = await POST(createRequest(body));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.errors).toContain('재료[0] 형식이 잘못되었습니다.');
+    expect(data.errors).toContain('재료[1] 형식이 잘못되었습니다.');
   });
 
   test('steps 배열이 비어있으면 400 에러를 반환한다', async () => {
@@ -137,8 +160,8 @@ describe('POST /api/recipes', () => {
     expect(data.errors).toContain('최소 1개 이상의 조리 순서(steps)가 필요합니다.');
   });
 
-  test('steps 항목 중 instruction이 없으면 400 에러를 반환한다', async () => {
-    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+  test('steps 항목 중 instruction이 없거나 문자열이 아니면 400 에러를 반환한다', async () => {
+    mockGetServerSession.mockResolvedValue(MOCK_SESSION);
 
     const body = {
       ...VALID_BODY,
@@ -150,6 +173,65 @@ describe('POST /api/recipes', () => {
     expect(res.status).toBe(400);
     expect(data.success).toBe(false);
     expect(data.errors).toContain('조리 순서[0]에 설명(instruction)이 누락되었습니다.');
+
+    const body2 = {
+      ...VALID_BODY,
+      steps: [{ step_order: 1, instruction: 123 }],
+    };
+    const res2 = await POST(createRequest(body2));
+    const data2 = await res2.json();
+    expect(data2.errors).toContain('조리 순서[0]에 설명(instruction)이 누락되었습니다.');
+  });
+
+  test('steps 항목 중 step_order가 없거나 정수가 아니거나 0 이하이면 400 에러를 반환한다', async () => {
+    mockGetServerSession.mockResolvedValue(MOCK_SESSION);
+
+    const body = {
+      ...VALID_BODY,
+      steps: [{ instruction: 'test' }], // step_order missing
+    };
+    const res = await POST(createRequest(body));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.errors).toContain(
+      '조리 순서[0]에 순서 번호(step_order)가 누락되거나 잘못되었습니다.',
+    );
+
+    const body2 = {
+      ...VALID_BODY,
+      steps: [{ step_order: 1.5, instruction: 'test' }],
+    };
+    const res2 = await POST(createRequest(body2));
+    const data2 = await res2.json();
+    expect(data2.errors).toContain(
+      '조리 순서[0]에 순서 번호(step_order)가 누락되거나 잘못되었습니다.',
+    );
+
+    const body3 = {
+      ...VALID_BODY,
+      steps: [{ step_order: 0, instruction: 'test' }],
+    };
+    const res3 = await POST(createRequest(body3));
+    const data3 = await res3.json();
+    expect(data3.errors).toContain(
+      '조리 순서[0]에 순서 번호(step_order)가 누락되거나 잘못되었습니다.',
+    );
+  });
+
+  test('steps 항목이 객체가 아니면 400 에러를 반환한다', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+
+    const body = {
+      ...VALID_BODY,
+      steps: [null, 123],
+    };
+    const res = await POST(createRequest(body));
+    const data = await res.json();
+
+    expect(res.status).toBe(400);
+    expect(data.errors).toContain('조리 순서[0] 형식이 잘못되었습니다.');
+    expect(data.errors).toContain('조리 순서[1] 형식이 잘못되었습니다.');
   });
 
   // ── 성공 케이스 ───────────────────────────

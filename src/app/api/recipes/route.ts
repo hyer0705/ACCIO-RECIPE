@@ -211,8 +211,17 @@ export async function POST(req: Request) {
     if (!Array.isArray(ingredients) || ingredients.length === 0) {
       errors.push('최소 1개 이상의 재료(ingredients)가 필요합니다.');
     } else {
-      ingredients.forEach((ing: IngredientInput, index: number) => {
-        if (!ing.name || typeof ing.name !== 'string' || ing.name.trim() === '') {
+      ingredients.forEach((ing: unknown, index: number) => {
+        if (!ing || typeof ing !== 'object' || Array.isArray(ing)) {
+          errors.push(`재료[${index}] 형식이 잘못되었습니다.`);
+          return;
+        }
+        const ingredient = ing as IngredientInput;
+        if (
+          !ingredient.name ||
+          typeof ingredient.name !== 'string' ||
+          ingredient.name.trim() === ''
+        ) {
           errors.push(`재료[${index}]에 이름(name)이 누락되었습니다.`);
         }
       });
@@ -220,14 +229,19 @@ export async function POST(req: Request) {
     if (!Array.isArray(steps) || steps.length === 0) {
       errors.push('최소 1개 이상의 조리 순서(steps)가 필요합니다.');
     } else {
-      steps.forEach((step: StepInput, index: number) => {
-        if (typeof step.step_order !== 'number') {
+      steps.forEach((step: unknown, index: number) => {
+        if (!step || typeof step !== 'object' || Array.isArray(step)) {
+          errors.push(`조리 순서[${index}] 형식이 잘못되었습니다.`);
+          return;
+        }
+        const stepInput = step as StepInput;
+        if (!Number.isInteger(stepInput.step_order) || stepInput.step_order <= 0) {
           errors.push(`조리 순서[${index}]에 순서 번호(step_order)가 누락되거나 잘못되었습니다.`);
         }
         if (
-          !step.instruction ||
-          typeof step.instruction !== 'string' ||
-          step.instruction.trim() === ''
+          !stepInput.instruction ||
+          typeof stepInput.instruction !== 'string' ||
+          stepInput.instruction.trim() === ''
         ) {
           errors.push(`조리 순서[${index}]에 설명(instruction)이 누락되었습니다.`);
         }
