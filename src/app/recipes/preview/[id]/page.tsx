@@ -29,7 +29,7 @@ export default function PreviewPage({ params }: { params: Promise<{ id: string }
     isLoading,
     isError,
   } = useQuery<RecipeResponse, Error, RecipeResponse>({
-    queryKey: ['recipe', recipeId],
+    queryKey: ['recipe', recipeId, initialServings],
     queryFn: async () => {
       // API 자체도 servings 쿼리를 받으면 배율을 이미 계산해서 리턴하도록 구현되어 있음
       const url = initialServings
