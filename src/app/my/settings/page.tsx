@@ -9,10 +9,12 @@ function ToggleSwitch({
   checked,
   onChange,
   id,
+  disabled,
 }: {
   checked: boolean;
   onChange: () => void;
   id: string;
+  disabled?: boolean;
 }) {
   return (
     <button
@@ -20,9 +22,10 @@ function ToggleSwitch({
       role="switch"
       aria-checked={checked}
       onClick={onChange}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none cursor-pointer ${
-        checked ? 'bg-[#FF5A28]' : 'bg-[#EBEBEB]'
-      }`}
+      disabled={disabled}
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+        disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
+      } ${checked ? 'bg-[#FF5A28]' : 'bg-[#EBEBEB]'}`}
     >
       <span
         className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
@@ -124,7 +127,10 @@ export default function SettingsPage() {
 
       <div className="bg-white rounded-[32px] p-10 shadow-sm relative">
         {updateMutation.isPending && (
-          <div className="absolute inset-0 bg-white/50 rounded-[32px] z-10 hidden" />
+          <div
+            className="absolute inset-0 z-10 rounded-[32px] bg-white/50 cursor-wait"
+            aria-hidden="true"
+          />
         )}
 
         {/* Profile Management Section */}
@@ -138,9 +144,10 @@ export default function SettingsPage() {
                   <div className="flex-1 flex gap-2">
                     <input
                       type="text"
-                      className="flex-1 bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl px-4 py-2 text-[15px] text-[#3C2D23] outline-none focus:border-[#FF5A28] transition-colors"
+                      className="flex-1 bg-[#FAFAFA] border border-[#EBEBEB] rounded-xl px-4 py-2 text-[15px] text-[#3C2D23] outline-none focus:border-[#FF5A28] transition-colors disabled:opacity-50"
                       value={editNicknameValue}
                       onChange={(e) => setEditNicknameValue(e.target.value)}
+                      disabled={updateMutation.isPending}
                       autoFocus
                     />
                   </div>
@@ -152,13 +159,15 @@ export default function SettingsPage() {
                   <div className="flex gap-3">
                     <button
                       onClick={() => setIsEditingNickname(false)}
-                      className="cursor-pointer text-[14px] font-medium text-[#8C847E] hover:text-[#3C2D23] transition-colors"
+                      disabled={updateMutation.isPending}
+                      className="cursor-pointer text-[14px] font-medium text-[#8C847E] hover:text-[#3C2D23] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       취소
                     </button>
                     <button
                       onClick={handleSaveNickname}
-                      className="cursor-pointer text-[14px] font-medium text-[#FF5A28] hover:text-[#E04D20] transition-colors"
+                      disabled={updateMutation.isPending}
+                      className="cursor-pointer text-[14px] font-medium text-[#FF5A28] hover:text-[#E04D20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       저장
                     </button>
@@ -166,7 +175,8 @@ export default function SettingsPage() {
                 ) : (
                   <button
                     onClick={handleEditNicknameClick}
-                    className="cursor-pointer text-[14px] font-medium text-[#FF5A28] hover:text-[#E04D20] transition-colors"
+                    disabled={updateMutation.isPending}
+                    className="cursor-pointer text-[14px] font-medium text-[#FF5A28] hover:text-[#E04D20] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     수정하기
                   </button>
@@ -182,13 +192,23 @@ export default function SettingsPage() {
           <div className="border-t border-[#F5F5F5]">
             <div className="flex justify-between items-center py-6 border-b border-[#F5F5F5]">
               <span className="text-[15px] font-medium text-[#3C2D23]">조리 타이머 종료 알림</span>
-              <ToggleSwitch id="timer-alert" checked={timerAlert} onChange={handleToggleTimer} />
+              <ToggleSwitch
+                id="timer-alert"
+                checked={timerAlert}
+                onChange={handleToggleTimer}
+                disabled={updateMutation.isPending}
+              />
             </div>
             <div className="flex justify-between items-center py-6 border-b border-[#F5F5F5]">
               <span className="text-[15px] font-medium text-[#3C2D23]">
                 냉장고 재료 유통기한 임박 알림
               </span>
-              <ToggleSwitch id="expiry-alert" checked={expiryAlert} onChange={handleToggleExpiry} />
+              <ToggleSwitch
+                id="expiry-alert"
+                checked={expiryAlert}
+                onChange={handleToggleExpiry}
+                disabled={updateMutation.isPending}
+              />
             </div>
           </div>
         </section>
@@ -201,7 +221,13 @@ export default function SettingsPage() {
               <span className="text-[15px] font-medium text-[#3C2D23]">
                 요리 경험 기록 자동 내보내기 (.md)
               </span>
-              <span className="text-[14px] font-medium text-[#A59A94] cursor-pointer hover:text-[#3C2D23] transition-colors">
+              <span
+                className={`text-[14px] font-medium transition-colors ${
+                  updateMutation.isPending
+                    ? 'text-[#CCCCCC] cursor-not-allowed'
+                    : 'text-[#A59A94] cursor-pointer hover:text-[#3C2D23]'
+                }`}
+              >
                 깃허브/블로그 연동
               </span>
             </div>
@@ -212,12 +238,16 @@ export default function SettingsPage() {
         <div className="flex justify-center items-center gap-2 text-[14px] font-medium text-[#CCCCCC] mt-10">
           <button
             onClick={handleLogout}
-            className="cursor-pointer hover:text-[#A59A94] transition-colors"
+            disabled={updateMutation.isPending}
+            className="cursor-pointer hover:text-[#A59A94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             로그아웃
           </button>
           <span>|</span>
-          <button className="cursor-pointer hover:text-[#A59A94] transition-colors">
+          <button
+            disabled={updateMutation.isPending}
+            className="cursor-pointer hover:text-[#A59A94] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
             서비스 탈퇴
           </button>
         </div>
