@@ -38,6 +38,7 @@ export const GEMINI_SCHEMA: Schema = {
           amount: { type: Type.NUMBER, description: '재료 양 (숫자. 없으면 생략)', nullable: true },
           unit: { type: Type.STRING, description: '재료 단위', nullable: true },
         },
+        required: ['name'],
       },
     },
     steps: {
@@ -62,13 +63,16 @@ export const GEMINI_SCHEMA: Schema = {
             items: {
               type: Type.OBJECT,
               properties: {
+                step_order: { type: Type.INTEGER, description: '조리 순서 (1, 2, 3...)' },
                 name: { type: Type.STRING, description: '재료 이름' },
                 amount: { type: Type.NUMBER, description: '재료 양', nullable: true },
                 unit: { type: Type.STRING, description: '재료 단위', nullable: true },
               },
+              required: ['step_order', 'name'],
             },
           },
         },
+        required: ['step_order', 'instruction'],
       },
     },
   },
