@@ -10,17 +10,20 @@ function ToggleSwitch({
   onChange,
   id,
   disabled,
+  labelledBy,
 }: {
   checked: boolean;
   onChange: () => void;
   id: string;
   disabled?: boolean;
+  labelledBy?: string;
 }) {
   return (
     <button
       id={id}
       role="switch"
       aria-checked={checked}
+      aria-labelledby={labelledBy}
       onClick={onChange}
       disabled={disabled}
       className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
@@ -191,20 +194,24 @@ export default function SettingsPage() {
           <h2 className="text-[18px] font-bold text-[#3C2D23] mb-6">서비스 알림</h2>
           <div className="border-t border-[#F5F5F5]">
             <div className="flex justify-between items-center py-6 border-b border-[#F5F5F5]">
-              <span className="text-[15px] font-medium text-[#3C2D23]">조리 타이머 종료 알림</span>
+              <span id="timer-alert-label" className="text-[15px] font-medium text-[#3C2D23]">
+                조리 타이머 종료 알림
+              </span>
               <ToggleSwitch
                 id="timer-alert"
+                labelledBy="timer-alert-label"
                 checked={timerAlert}
                 onChange={handleToggleTimer}
                 disabled={updateMutation.isPending}
               />
             </div>
             <div className="flex justify-between items-center py-6 border-b border-[#F5F5F5]">
-              <span className="text-[15px] font-medium text-[#3C2D23]">
+              <span id="expiry-alert-label" className="text-[15px] font-medium text-[#3C2D23]">
                 냉장고 재료 유통기한 임박 알림
               </span>
               <ToggleSwitch
                 id="expiry-alert"
+                labelledBy="expiry-alert-label"
                 checked={expiryAlert}
                 onChange={handleToggleExpiry}
                 disabled={updateMutation.isPending}
