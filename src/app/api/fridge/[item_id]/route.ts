@@ -51,15 +51,19 @@ export async function PUT(req: Request, context: RouteContext) {
       errors.push('수량(quantity)은 0보다 큰 숫자여야 합니다.');
     }
     if (body.expiry_date !== undefined) {
-      try {
-        const expiryDate = parseAndValidateLocalDate(body.expiry_date as string);
-        const today = getTodayInLocalTime();
-
-        if (expiryDate < today) {
-          errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
-        }
-      } catch {
+      if (typeof body.expiry_date !== 'string') {
         errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+      } else {
+        try {
+          const expiryDate = parseAndValidateLocalDate(body.expiry_date);
+          const today = getTodayInLocalTime();
+
+          if (expiryDate < today) {
+            errors.push('유통기한(expiry_date)은 오늘 이후 날짜여야 합니다.');
+          }
+        } catch {
+          errors.push('유통기한(expiry_date)은 YYYY-MM-DD 형식이어야 합니다.');
+        }
       }
     }
 
