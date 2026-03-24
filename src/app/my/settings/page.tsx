@@ -26,7 +26,7 @@ function ToggleSwitch({
       aria-labelledby={labelledBy}
       onClick={onChange}
       disabled={disabled}
-      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+      className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#FF5A28] focus-visible:ring-offset-2 ${
         disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'
       } ${checked ? 'bg-[#FF5A28]' : 'bg-[#EBEBEB]'}`}
     >
