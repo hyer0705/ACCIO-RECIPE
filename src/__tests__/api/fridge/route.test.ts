@@ -72,12 +72,23 @@ const MOCK_CREATED_ITEM = {
 };
 
 // ─────────────────────────────────────────────
+// 날짜 포맷 헬퍼 (YYYY-MM-DD, 로컬 시간 기준)
+// ─────────────────────────────────────────────
+function formatLocalYmd(date: Date): string {
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+// ─────────────────────────────────────────────
 // 내일 날짜 문자열 (YYYY-MM-DD)
 // ─────────────────────────────────────────────
 function getTomorrowString(): string {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
-  return tomorrow.toISOString().split('T')[0];
+  return formatLocalYmd(tomorrow);
 }
 
 // ─────────────────────────────────────────────
@@ -86,7 +97,7 @@ function getTomorrowString(): string {
 function getYesterdayString(): string {
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split('T')[0];
+  return formatLocalYmd(yesterday);
 }
 
 describe('POST /api/fridge', () => {
