@@ -75,9 +75,11 @@ jobs:
             # 스크립트 실행 중 에러 발생 시 즉시 중단
             set -e
 
-            # EC2 로컬에 남아있는 변경사항(package-lock.json 등)을 강제 초기화
-            git checkout .
-            git pull origin ${{ github.ref_name }}
+            # EC2 작업 트리를 원격 브랜치와 정확히 동일한 상태로 맞춤
+            git fetch origin ${{ github.ref_name }}
+            git checkout -B ${{ github.ref_name }} origin/${{ github.ref_name }}
+            git reset --hard origin/${{ github.ref_name }}
+            git clean -fd
 
             # .env 파일 생성 (GitHub Secrets 주입)
             echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
