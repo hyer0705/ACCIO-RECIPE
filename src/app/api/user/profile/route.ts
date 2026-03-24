@@ -22,7 +22,10 @@ export async function GET() {
           ? (e as { code?: string }).code
           : undefined;
       if (code === 'NOT_FOUND') {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+        return NextResponse.json(
+          { success: false, message: '존재하지 않는 사용자입니다.' },
+          { status: 404 },
+        );
       }
       throw e;
     }
