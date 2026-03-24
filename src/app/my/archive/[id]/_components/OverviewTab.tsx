@@ -148,7 +148,7 @@ export default function OverviewTab({
         </div>
 
         {/* Instructions Block */}
-        <div className="flex-2 bg-white rounded-[24px] p-8 shadow-sm flex flex-col relative overflow-hidden">
+        <div className="flex-[2] bg-white rounded-[24px] p-8 shadow-sm flex flex-col relative overflow-hidden">
           <h2 className="text-[18px] font-bold text-[#3C2D23] mb-6 shrink-0">조리 순서</h2>
           <ol className="text-[15px] text-[#554A43] space-y-6 flex-1 overflow-y-auto pb-6 pr-4">
             {recipe.steps.map((step) => (
