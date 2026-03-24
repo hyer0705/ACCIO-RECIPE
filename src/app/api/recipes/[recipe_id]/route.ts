@@ -47,7 +47,7 @@ export async function GET(req: Request, context: RouteContext) {
       {
         success: false,
         message: '서버 에러가 발생했습니다.',
-        error: error instanceof Error ? error.message : String(error),
+        error: 'Internal Server Error',
       },
       { status: 500 },
     );
@@ -83,7 +83,7 @@ export async function DELETE(_req: Request, context: RouteContext) {
       {
         success: false,
         message: '서버 에러가 발생했습니다.',
-        error: error instanceof Error ? error.message : String(error),
+        error: 'Internal Server Error',
       },
       { status: 500 },
     );

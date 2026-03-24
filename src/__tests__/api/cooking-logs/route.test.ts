@@ -266,6 +266,6 @@ describe('POST /api/logs', () => {
     expect(res.status).toBe(500);
     expect(data.success).toBe(false);
     expect(data.message).toBe('서버 에러가 발생했습니다.');
-    expect(data.error).toBe('DB 연결 실패');
+    expect(data.error).toBe('Internal Server Error');
   });
 });
