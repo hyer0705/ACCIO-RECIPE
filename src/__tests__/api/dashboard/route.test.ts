@@ -54,17 +54,26 @@ const MOCK_THIS_MONTH_LOGS = [
   { status: 'REGRET' },
 ];
 
+/**
+ * 현재 날짜에 일수를 더한 Date 객체를 반환합니다.
+ */
+function plusDays(days: number) {
+  const date = new Date();
+  date.setDate(date.getDate() + days);
+  return date;
+}
+
 const MOCK_EXPIRING_ITEMS = [
   {
     item_id: 1,
     custom_name: null,
-    expiry_date: new Date('2026-03-01'),
+    expiry_date: plusDays(1),
     ingredients_master: { name: '달걀', icon_url: null },
   },
   {
     item_id: 2,
     custom_name: '직접 담근 김치',
-    expiry_date: new Date('2026-03-05'),
+    expiry_date: plusDays(5),
     ingredients_master: null,
   },
 ];
@@ -72,7 +81,7 @@ const MOCK_EXPIRING_ITEMS = [
 const MOCK_LATEST_LESSON = {
   log_id: 5,
   lesson_note: '인덕션 6단은 소스가 쉽게 탑니다.',
-  cooked_at: new Date('2026-02-20T12:00:00Z'),
+  cooked_at: plusDays(-30),
   recipes: { title: '매콤 닭볶음탕' },
 };
 
