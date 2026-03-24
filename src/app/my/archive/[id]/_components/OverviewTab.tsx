@@ -102,6 +102,8 @@ export default function OverviewTab({
             <h2 className="text-[18px] font-bold text-[#3C2D23]">재료</h2>
             <div className="flex items-center gap-3 bg-[#FAF6E9] rounded-full px-3 py-1.5">
               <button
+                type="button"
+                aria-label="인분 수 줄이기"
                 onClick={decrementServings}
                 className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#8C827A] hover:text-[#FF5A28] shadow-sm transition-colors"
               >
@@ -111,6 +113,8 @@ export default function OverviewTab({
                 {currentServings}인분
               </span>
               <button
+                type="button"
+                aria-label="인분 수 늘리기"
                 onClick={incrementServings}
                 className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-[#8C827A] hover:text-[#FF5A28] shadow-sm transition-colors"
               >
