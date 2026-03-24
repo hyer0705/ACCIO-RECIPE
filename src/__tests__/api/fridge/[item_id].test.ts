@@ -112,6 +112,12 @@ describe('PUT /api/fridge/[item_id]', () => {
     expect(res.status).toBe(400);
   });
 
+  test('item_id가 숫자와 문자가 섞여있으면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(makeReq({}), mockParams('12abc'));
+    expect(res.status).toBe(400);
+  });
+
   test('존재하지 않는 item이면 404', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     mockFindUnique.mockResolvedValueOnce(null);
@@ -192,6 +198,12 @@ describe('DELETE /api/fridge/[item_id]', () => {
   test('item_id가 문자열이면 400', async () => {
     mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
     const res = await DELETE(makeReq(), mockParams('abc'));
+    expect(res.status).toBe(400);
+  });
+
+  test('item_id가 숫자와 문자가 섞여있으면 400', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await DELETE(makeReq(), mockParams('12abc'));
     expect(res.status).toBe(400);
   });
 

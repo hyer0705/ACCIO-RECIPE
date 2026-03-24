@@ -12,9 +12,15 @@ export async function PUT(req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { item_id: itemIdParam } = await context.params;
-    const itemId = parseInt(itemIdParam, 10);
+    if (!/^\d+$/.test(itemIdParam)) {
+      return NextResponse.json(
+        { success: false, message: '유효하지 않은 item_id입니다.' },
+        { status: 400 },
+      );
+    }
+    const itemId = Number(itemIdParam);
 
-    if (isNaN(itemId) || itemId <= 0) {
+    if (itemId <= 0) {
       return NextResponse.json(
         { success: false, message: '유효하지 않은 item_id입니다.' },
         { status: 400 },
@@ -79,9 +85,15 @@ export async function DELETE(_req: Request, context: RouteContext) {
   try {
     const { userId } = await requireSessionUser();
     const { item_id: itemIdParam } = await context.params;
-    const itemId = parseInt(itemIdParam, 10);
+    if (!/^\d+$/.test(itemIdParam)) {
+      return NextResponse.json(
+        { success: false, message: '유효하지 않은 item_id입니다.' },
+        { status: 400 },
+      );
+    }
+    const itemId = Number(itemIdParam);
 
-    if (isNaN(itemId) || itemId <= 0) {
+    if (itemId <= 0) {
       return NextResponse.json(
         { success: false, message: '유효하지 않은 item_id입니다.' },
         { status: 400 },
