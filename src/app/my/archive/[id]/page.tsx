@@ -42,7 +42,9 @@ interface CookingLog {
 
 export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const unwrappedParams = React.use(params);
-  const recipeId = parseInt(unwrappedParams.id, 10);
+  const recipeId = Number(unwrappedParams.id);
+  const isValidRecipeId =
+    /^\d+$/.test(unwrappedParams.id) && Number.isInteger(recipeId) && recipeId > 0;
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [servings, setServings] = useState<number>(1);
@@ -60,6 +62,7 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
       const json = await res.json();
       return json.data;
     },
+    enabled: isValidRecipeId,
   });
 
   const {
@@ -75,6 +78,7 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
       if (!json || !json.data) throw new Error('Invalid logs data');
       return json.data;
     },
+    enabled: isValidRecipeId,
   });
 
   useEffect(() => {
@@ -84,6 +88,14 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
       initializedRecipeId.current = recipe.recipe_id;
     }
   }, [recipe]);
+
+  if (!isValidRecipeId) {
+    return (
+      <div className="max-w-[1000px] flex justify-center items-center h-[500px] text-[#EF4444]">
+        잘못된 접근입니다.
+      </div>
+    );
+  }
 
   if (isRecipeLoading || isLogsLoading) {
     return (
