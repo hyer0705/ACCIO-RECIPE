@@ -1,10 +1,43 @@
-import Image from 'next/image';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import Header from '@/components/layout/Header';
+import RecipeUrlForm from '@/components/recipe/RecipeUrlForm';
+import ExtractionLoading from '@/components/recipe/ExtractionLoading';
+import { useExtractionStore } from '@/store/useExtractionStore';
 
 export default function Home() {
+  const router = useRouter();
+  const { startExtraction, isExtracting, error, reset, completedRecipeId } = useExtractionStore();
+
+  useEffect(() => {
+    if (completedRecipeId) {
+      router.push(`/recipes/preview/${completedRecipeId}`);
+    }
+  }, [completedRecipeId, router]);
+
+  const handleSubmit = async (url: string) => {
+    reset();
+    await startExtraction(url);
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex min-h-screen w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <h1>ACCIO RECIPE TEST~</h1>
+    <div className="min-h-screen bg-[#FAF6E9] font-sans">
+      <Header />
+
+      <main className="flex flex-col items-center justify-center p-4">
+        {error && (
+          <div className="mb-6 bg-red-100 border border-red-300 text-red-700 px-6 py-4 rounded-xl font-medium shadow-sm max-w-xl text-center">
+            {error}
+          </div>
+        )}
+
+        {isExtracting ? (
+          <ExtractionLoading />
+        ) : (
+          <RecipeUrlForm onSubmitUrl={handleSubmit} isPending={isExtracting} />
+        )}
       </main>
     </div>
   );

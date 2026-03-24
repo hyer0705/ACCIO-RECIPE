@@ -7,12 +7,27 @@ on:
       - develop
       - 'develop-*'
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
-  # 1. CI 단계: 코드 문법 검사 (Linting)
-  lint:
-    name: Lint Check
+  # 1. CI 단계: 코드 문법 검사 (Linting) 및 단위 테스트 (Testing)
+  ci:
+    name: Lint & Test Check
     runs-on: ubuntu-latest
-    
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
+      NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+      KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+      NAVER_CLIENT_ID: ${{ secrets.NAVER_CLIENT_ID }}
+      NAVER_CLIENT_SECRET: ${{ secrets.NAVER_CLIENT_SECRET }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GEMINI_MODEL: ${{ secrets.GEMINI_MODEL }}
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -23,15 +38,24 @@ jobs:
           node-version: '24'
 
       - name: Install Dependencies
-        run: npm ci
+        run: npm ci --legacy-peer-deps
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
 
       - name: Run Lint
         run: npm run lint
 
-  # 2. CD 단계: EC2 서버 배포 (단, lint 작업이 성공적으로 끝났을 때만 실행)
+      - name: Run Tests
+        run: npm run test
+
+      - name: Build Check
+        run: npm run build
+
+  # 2. CD 단계: EC2 서버 배포 (단, ci 작업이 성공적으로 끝났을 때만 실행)
   deploy:
     name: Deploy to EC2
-    needs: lint
+    needs: ci
     runs-on: ubuntu-latest
 
     steps:
@@ -45,12 +69,31 @@ jobs:
           script: |
             export NVM_DIR="$HOME/.nvm"
             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
-            
+
             cd ${{ secrets.TARGET_DIR }}
+
+            # 스크립트 실행 중 에러 발생 시 즉시 중단
+            set -e
+
+            # EC2 로컬에 남아있는 변경사항(package-lock.json 등)을 강제 초기화
+            git checkout .
             git pull origin ${{ github.ref_name }}
-            
+
+            # .env 파일 생성 (GitHub Secrets 주입)
+            echo "DATABASE_URL=${{ secrets.DATABASE_URL }}" > .env
+            echo "NEXTAUTH_URL=${{ secrets.NEXTAUTH_URL }}" >> .env
+            echo "NEXTAUTH_SECRET=${{ secrets.NEXTAUTH_SECRET }}" >> .env
+            echo "GOOGLE_CLIENT_ID=${{ secrets.GOOGLE_CLIENT_ID }}" >> .env
+            echo "GOOGLE_CLIENT_SECRET=${{ secrets.GOOGLE_CLIENT_SECRET }}" >> .env
+            echo "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}" >> .env
+            echo "KAKAO_CLIENT_SECRET=${{ secrets.KAKAO_CLIENT_SECRET }}" >> .env
+            echo "NAVER_CLIENT_ID=${{ secrets.NAVER_CLIENT_ID }}" >> .env
+            echo "NAVER_CLIENT_SECRET=${{ secrets.NAVER_CLIENT_SECRET }}" >> .env
+            echo "GEMINI_API_KEY=${{ secrets.GEMINI_API_KEY }}" >> .env
+            echo "GEMINI_MODEL=${{ secrets.GEMINI_MODEL }}" >> .env
+
             npm install
             npx prisma generate
             npm run build
-            
+
             pm2 restart all
