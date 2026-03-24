@@ -1,3 +1,4 @@
+import { Prisma } from '@/generated/client/client';
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import * as userService from '@/services/userService';
 import prisma from '@/lib/prisma';
@@ -35,22 +36,31 @@ describe('userService', () => {
 
     test('사용자가 없으면 에러를 던진다', async () => {
       vi.mocked(prisma.users.findUnique).mockResolvedValue(null);
-      await expect(userService.getUserProfile(userId)).rejects.toThrow('NOT_FOUND');
+      await expect(userService.getUserProfile(userId)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+        message: '존재하지 않는 사용자입니다.',
+      });
     });
   });
 
   describe('deleteUser', () => {
     test('사용자를 성공적으로 삭제한다', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      vi.mocked(prisma.users.findUnique).mockResolvedValue({ user_id: userId } as any);
-
       await userService.deleteUser(userId);
       expect(prisma.users.delete).toHaveBeenCalledWith({ where: { user_id: userId } });
     });
 
     test('존재하지 않는 사용자 삭제 시도 시 에러 발생', async () => {
-      vi.mocked(prisma.users.findUnique).mockResolvedValue(null);
-      await expect(userService.deleteUser(999)).rejects.toThrow('NOT_FOUND');
+      vi.mocked(prisma.users.delete).mockRejectedValue(
+        new Prisma.PrismaClientKnownRequestError('Record not found', {
+          code: 'P2025',
+          clientVersion: 'test',
+        }),
+      );
+
+      await expect(userService.deleteUser(999)).rejects.toMatchObject({
+        code: 'NOT_FOUND',
+        message: '존재하지 않는 사용자입니다.',
+      });
     });
   });
 });

@@ -1,3 +1,4 @@
+import { Prisma } from '@/generated/client/client';
 import prisma from '@/lib/prisma';
 import { notFound } from '@/lib/auth/errors';
 
@@ -35,14 +36,15 @@ export async function getUserProfile(userId: number) {
  * 회원 탈퇴
  */
 export async function deleteUser(userId: number) {
-  const existingUser = await prisma.users.findUnique({
-    where: { user_id: userId },
-    select: { user_id: true },
-  });
+  try {
+    await prisma.users.delete({
+      where: { user_id: userId },
+    });
+  } catch (error) {
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
+      throw notFound('존재하지 않는 사용자입니다.');
+    }
 
-  if (!existingUser) throw notFound('존재하지 않는 사용자입니다.');
-
-  await prisma.users.delete({
-    where: { user_id: userId },
-  });
+    throw error;
+  }
 }
