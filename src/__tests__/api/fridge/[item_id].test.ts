@@ -100,6 +100,29 @@ describe('PUT /api/fridge/[item_id]', () => {
       body: JSON.stringify(body),
     });
 
+  test('잘못된 JSON 형식일 경우 400 반환', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(
+      new Request('http://localhost/api/fridge/1', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{ invalid json }',
+      }),
+      mockParams('1'),
+    );
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.message).toBe('잘못된 JSON 형식입니다.');
+  });
+
+  test('요청 본문이 객체가 아닐 경우 400 반환', async () => {
+    mockGetServerSession.mockResolvedValueOnce(MOCK_SESSION);
+    const res = await PUT(makeReq([1, 2, 3]), mockParams('1'));
+    const body = await res.json();
+    expect(res.status).toBe(400);
+    expect(body.message).toBe('잘못된 요청 형식입니다.');
+  });
+
   test('세션 없으면 401', async () => {
     mockGetServerSession.mockResolvedValueOnce(null);
     const res = await PUT(makeReq({}), mockParams('1'));

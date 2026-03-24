@@ -27,7 +27,24 @@ export async function PUT(req: Request, context: RouteContext) {
       );
     }
 
-    const body = await req.json();
+    let parsedBody: unknown;
+    try {
+      parsedBody = await req.json();
+    } catch {
+      return NextResponse.json(
+        { success: false, message: '잘못된 JSON 형식입니다.' },
+        { status: 400 },
+      );
+    }
+
+    if (!parsedBody || typeof parsedBody !== 'object' || Array.isArray(parsedBody)) {
+      return NextResponse.json(
+        { success: false, message: '잘못된 요청 형식입니다.' },
+        { status: 400 },
+      );
+    }
+
+    const body = parsedBody as Record<string, unknown>;
     const errors: string[] = [];
 
     if (body.quantity !== undefined && (typeof body.quantity !== 'number' || body.quantity <= 0)) {
@@ -35,7 +52,7 @@ export async function PUT(req: Request, context: RouteContext) {
     }
     if (body.expiry_date !== undefined) {
       try {
-        const expiryDate = parseAndValidateLocalDate(body.expiry_date);
+        const expiryDate = parseAndValidateLocalDate(body.expiry_date as string);
         const today = getTodayInLocalTime();
 
         if (expiryDate < today) {
@@ -53,7 +70,15 @@ export async function PUT(req: Request, context: RouteContext) {
       );
     }
 
-    const updated = await fridgeService.updateFridgeItem(userId, itemId, body);
+    const updated = await fridgeService.updateFridgeItem(
+      userId,
+      itemId,
+      body as {
+        quantity?: number;
+        unit?: string;
+        expiry_date?: string;
+      },
+    );
     return NextResponse.json({
       success: true,
       message: '재료 정보가 수정되었습니다.',
