@@ -11,7 +11,8 @@ export function useTimers() {
     pendingTimeoutsRef.current.forEach(clearTimeout);
     pendingTimeoutsRef.current.clear();
     setCompletedTimers([]);
-  }, []);
+    setActiveTimers([]);
+  }, [setActiveTimers]);
 
   // 컴포넌트 언마운트 시 미결 타임아웃 정리
   useEffect(() => {
