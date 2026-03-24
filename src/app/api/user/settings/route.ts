@@ -91,6 +91,10 @@ export async function PUT(req: NextRequest) {
       settingsUpdateData.auto_export_enabled = auto_export_enabled;
     if (external_link !== undefined) settingsUpdateData.external_link = external_link;
 
+    if (Object.keys(userUpdateData).length === 0 && Object.keys(settingsUpdateData).length === 0) {
+      return NextResponse.json({ error: 'Invalid input' }, { status: 400 });
+    }
+
     // Users 테이블 및 연관된 User_Settings 동시 업데이트
     const updatedUser = await prisma.users.update({
       where: { user_id: userId },
