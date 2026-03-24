@@ -185,7 +185,7 @@ export async function processExtraction(
         },
       });
 
-      if (recipeData.ingredients?.length > 0) {
+      if (recipeData.ingredients && recipeData.ingredients.length > 0) {
         await tx.recipe_ingredients.createMany({
           data: (recipeData.ingredients as DraftIngredient[]).map((ing) => ({
             recipe_id: recipeId,
@@ -194,7 +194,7 @@ export async function processExtraction(
         });
       }
 
-      if (recipeData.steps?.length > 0) {
+      if (recipeData.steps && recipeData.steps.length > 0) {
         await tx.recipe_steps.createMany({
           data: (recipeData.steps as DraftStep[]).map((step) => ({
             recipe_id: recipeId,

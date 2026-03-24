@@ -1,5 +1,5 @@
 // vitest.setup.ts
-import { vi } from 'vitest';
+import { vi, beforeEach } from 'vitest';
 
 // prisma global mock
 vi.mock('@/lib/prisma', () => {

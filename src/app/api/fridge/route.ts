@@ -91,7 +91,12 @@ export async function POST(req: Request) {
     }
 
     // ── 2. 서비스 호출 ────────────────────────────────────────────────
-    const newItem = await fridgeService.addFridgeItem(userId, { ...body, name: trimmedName });
+    const newItem = await fridgeService.addFridgeItem(userId, {
+      name: trimmedName as string,
+      quantity: typeof body.quantity === 'number' ? body.quantity : undefined,
+      unit: typeof body.unit === 'string' ? body.unit : undefined,
+      expiry_date: typeof body.expiry_date === 'string' ? body.expiry_date : undefined,
+    });
 
     return NextResponse.json(
       {

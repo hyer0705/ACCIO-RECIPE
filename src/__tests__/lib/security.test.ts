@@ -160,8 +160,17 @@ describe('fetchWithSsrfProtection', () => {
   });
 
   it('should reject fallback DNS results that resolve to private IPs', async () => {
+    interface LookupAddress {
+      address: string;
+      family: number;
+    }
+
     let dispatchedLookup:
-      | ((hostname: string, options: unknown, callback: (...args: unknown[]) => void) => void)
+      | ((
+          hostname: string,
+          options: unknown,
+          callback: (err: Error | null, addresses: LookupAddress[]) => void,
+        ) => void)
       | undefined;
 
     const fetchMock = vi.fn(async (_input, init?: RequestInit) => {
