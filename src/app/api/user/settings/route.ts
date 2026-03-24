@@ -10,7 +10,7 @@ const settingsSchema = z.object({
   alert_timer: z.boolean().optional(),
   alert_expiry: z.boolean().optional(),
   auto_export_enabled: z.boolean().optional(),
-  external_link: z.string().url().nullable().optional(),
+  external_link: z.string().url().max(255).nullable().optional(),
 });
 
 /**

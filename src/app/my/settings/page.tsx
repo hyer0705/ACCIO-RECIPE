@@ -58,8 +58,15 @@ export default function SettingsPage() {
     queryKey: ['user-profile'],
     queryFn: async () => {
       const res = await fetch('/api/user/profile');
-      if (!res.ok) throw new Error('Failed to fetch profile');
-      return res.json();
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          typeof payload?.error === 'string'
+            ? payload.error
+            : '사용자 정보를 불러오는데 실패했습니다.',
+        );
+      }
+      return payload;
     },
   });
 
@@ -74,8 +81,13 @@ export default function SettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(updatedSettings),
       });
-      if (!res.ok) throw new Error('Failed to update settings');
-      return res.json();
+      const payload = await res.json().catch(() => null);
+      if (!res.ok) {
+        throw new Error(
+          typeof payload?.error === 'string' ? payload.error : '설정 변경에 실패했습니다.',
+        );
+      }
+      return payload;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-profile'] });
@@ -84,7 +96,7 @@ export default function SettingsPage() {
     onError: (error) => {
       setFeedback({
         type: 'error',
-        message: `설정 변경에 실패했습니다: ${error.message}`,
+        message: error.message,
       });
     },
   });
@@ -266,15 +278,22 @@ export default function SettingsPage() {
               <span className="text-[15px] font-medium text-[#3C2D23]">
                 요리 경험 기록 자동 내보내기 (.md)
               </span>
-              <span
+              <button
+                disabled={updateMutation.isPending}
+                aria-disabled={updateMutation.isPending}
                 className={`text-[14px] font-medium transition-colors ${
                   updateMutation.isPending
                     ? 'text-[#CCCCCC] cursor-not-allowed'
                     : 'text-[#A59A94] cursor-pointer hover:text-[#3C2D23]'
                 }`}
+                onClick={() => {
+                  if (updateMutation.isPending) return;
+                  // TODO: 연동 로직 추가
+                  setFeedback({ type: 'info', message: '연동 기능은 준비 중입니다.' });
+                }}
               >
                 깃허브/블로그 연동
-              </span>
+              </button>
             </div>
           </div>
         </section>
