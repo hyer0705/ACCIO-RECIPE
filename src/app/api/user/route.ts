@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { requireSessionUser } from '@/lib/auth/session';
 import { toAccessControlErrorResponse } from '@/lib/auth/response';
 import * as userService from '@/services/userService';
@@ -15,6 +16,12 @@ export async function DELETE() {
 
     try {
       await userService.deleteUser(userId);
+
+      // 사용자 삭제 성공 시 세션 쿠키 무효화
+      const cookieStore = await cookies();
+      cookieStore.delete('next-auth.session-token');
+      cookieStore.delete('__Secure-next-auth.session-token');
+
       return NextResponse.json(
         { success: true, message: '회원 탈퇴가 완료되었습니다.' },
         { status: 200 },
