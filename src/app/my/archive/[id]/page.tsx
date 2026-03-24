@@ -1,7 +1,7 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 import ArchiveDetailHeader from './_components/ArchiveDetailHeader';
 import TabMenu, { TabType } from './_components/TabMenu';
@@ -46,6 +46,7 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
 
   const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [servings, setServings] = useState<number>(1);
+  const initializedRecipeId = useRef<number | null>(null);
 
   const {
     data: recipe,
@@ -61,20 +62,26 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
     },
   });
 
-  const { data: logs, isLoading: isLogsLoading } = useQuery<CookingLog[]>({
+  const {
+    data: logs,
+    isLoading: isLogsLoading,
+    isError: isLogsError,
+  } = useQuery<CookingLog[]>({
     queryKey: ['recipe-logs', recipeId],
     queryFn: async () => {
       const res = await fetch(`/api/recipes/${recipeId}/logs`);
       if (!res.ok) throw new Error('Failed to fetch cooking logs');
       const json = await res.json();
+      if (!json || !json.data) throw new Error('Invalid logs data');
       return json.data;
     },
   });
 
   useEffect(() => {
-    if (recipe && recipe.base_servings) {
+    if (recipe && recipe.base_servings && initializedRecipeId.current !== recipe.recipe_id) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setServings(recipe.base_servings);
+      initializedRecipeId.current = recipe.recipe_id;
     }
   }, [recipe]);
 
@@ -86,7 +93,7 @@ export default function MyArchiveDetailPage({ params }: { params: Promise<{ id: 
     );
   }
 
-  if (isRecipeError || !recipe) {
+  if (isRecipeError || isLogsError || !recipe) {
     return (
       <div className="max-w-[1000px] flex justify-center items-center h-[500px] text-[#EF4444]">
         데이터를 불러오는데 실패했습니다.
