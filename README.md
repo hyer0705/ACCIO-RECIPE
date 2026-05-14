@@ -1,46 +1,106 @@
-# ACCIO RECIPE
+# Accio Recipe
 
-**조리 UX 최적화를 제공하는 AI 보조 셰프 서비스**
+**조리 UX 최적화를 제공하는 AI 보조 셰프 웹 서비스**
 
-따라하고 싶은 레시피 콘텐츠를 분석 및 추출하여 조리에 몰입할 수 있는 조리 UX를 제공하는 웹 애플리케이션입니다. 조리 중 화면 조작을 최소화하여 요리에 집중할 수 있게 돕고, 요리 과정에서 얻은 소중한 경험을 기록하여 개인의 요리 자산으로 남길 수 있습니다.
+> 젖은 손, 모호한 계량, 휘발되는 요리 경험 — 레시피를 보며 요리할 때 겪는 세 가지 불편함을 줄이기 위해 설계했습니다.
 
-- **배포 주소:** [https://acciorecipe.work](https://acciorecipe.work)
-- **저장소:** [https://github.com/hyer0705/ACCIO-RECIPE](https://github.com/hyer0705/ACCIO-RECIPE)
+- [데모 영상 (YouTube)](https://youtu.be/P2oGN_nVM5A)
+- [프로젝트 기술서](https://docs.google.com/presentation/d/1tTRx71hPjinmTaGuUUngx9bD5KOZBxJqR-tR3ID9r5o/edit?usp=sharing)
+- [Figma UX Flow](https://www.figma.com/design/nPPIQOcKdHzprBapnGhR9W/ACCIO-RECIPE-UX-Flow?node-id=0-1&t=4YM5X14xAnDTJo1I-1)
+
+> ⚠️ **현재 운영 상태**
+> AWS 프리티어 비용 이슈로 서비스는 일시 중지된 상태입니다. 동작 흐름은 위 **데모 영상**으로 보존했으며, 직접 확인하지 못하는 한계를 고려해 README에 의사결정 맥락과 트러블슈팅을 상세히 기록했습니다.
 
 ---
 
-## 💡 주요 기능
+## 🎬 데모
 
-- **LLM 기반 레시피 분석 및 추출:** YouTube 영상, 블로그 글 등의 외부 링크에서 핵심 레시피 정보(식재료, 조리 순서 등)를 자동 추출합니다.
-- **조리 몰입형 UI/UX:** 요리 중 젖은 손으로도 화면 조작을 최소화할 수 있도록 설계된 최적화된 화면 인터페이스를 제공합니다.
-- **요리 경험 기록:** 요리 시의 실패 기록, 맛에 대한 평가, 지인의 반응 등을 저장하여 나만의 레시피 데이터베이스로 활용할 수 있습니다.
+[![Accio Recipe Demo](https://img.youtube.com/vi/P2oGN_nVM5A/maxresdefault.jpg)](https://youtube.com/watch?v=VIDEO_ID)
+
+> 위 이미지를 클릭하면 YouTube 데모 영상으로 이동합니다.
+
+---
+
+## 📌 서비스 소개
+
+### 한 줄 요약
+
+**유튜브/블로그 레시피 URL → 구조화된 JSON → 조리 몰입형 UI**로 변환해, 요리에만 집중할 수 있게 돕는 AI 보조 셰프입니다.
+
+### 어떤 문제를 해결하는가
+
+| Pain Point           | 사용자 경험                                               | 본 서비스의 해결 방식                                    |
+| :------------------- | :-------------------------------------------------------- | :------------------------------------------------------- |
+| **조리 흐름의 끊김** | 젖은 손으로 화면을 스크롤·터치해야 함                     | Wake Lock + 단계별 자동 진행 UI로 화면 조작 최소화       |
+| **정보의 불일치**    | "적당히", "한 컵" 같은 모호한 계량과 인분 환산의 번거로움 | LLM이 비정형 레시피를 구조화된 JSON으로 정규화           |
+| **요리 경험의 휘발** | "지난번엔 어떻게 했더라?"라는 반복되는 시행착오           | 경험·보완점·함께한 사람을 기록해 '나의 요리 서재'에 축적 |
+
+### 누구를 위한 서비스인가
+
+- 영상·블로그 레시피를 즐겨 보지만, 조리 중 화면 조작이 불편한 사용자
+- 같은 레시피를 여러 번 만들며 자신만의 노하우를 쌓고 싶은 사용자
+
+---
+
+## ✨ 주요 기능
+
+|  #  | 기능                             | 설명                                                                                             |
+| :-: | :------------------------------- | :----------------------------------------------------------------------------------------------- |
+|  1  | **LLM 기반 레시피 분석 및 추출** | YouTube 영상, 블로그 글 등의 외부 링크에서 핵심 레시피 정보(식재료, 조리 순서 등)를 자동 추출    |
+|  2  | **조리 몰입형 UI/UX**            | 요리 중 젖은 손으로도 화면 조작을 최소화할 수 있도록 설계된 최적화된 화면 인터페이스를 제공      |
+|  3  | **요리 경험 기록**               | 요리 시의 실패 기록, 맛에 대한 평가, 지인의 반응 등을 저장하여 나만의 레시피 데이터베이스로 활용 |
+
+### 각 기능 스크린샷
+
+#### 1. LLM 기반 레시피 분석 및 추출
+
+<img width="2940" height="1542" alt="01-landing" src="https://github.com/user-attachments/assets/f3316750-91d8-4de5-970b-29ec1cfb1666" />
+
+#### 2. 조리 몰입형 UI/UX
+
+<img width="2940" height="1542" alt="10-cooking-mode" src="https://github.com/user-attachments/assets/91c25c39-05b9-4a4d-9473-b030113fb4ad" />
+
+#### 3. 요리 경험 기록
+
+<img width="2940" height="1542" alt="13-cooking-log" src="https://github.com/user-attachments/assets/65dec9c1-2c81-4e80-8c9d-46eb63b088ff" />
 
 ---
 
 ## 🛠 기술 스택
 
-### **Frontend**
+| 카테고리              | 기술                                          |
+| :-------------------- | :-------------------------------------------- |
+| **Frontend Core**     | Next.js 16 (App Router), React 19, TypeScript |
+| **Styling & UI**      | Tailwind CSS v4, shadcn/ui                    |
+| **State & Data**      | Zustand, TanStack Query                       |
+| **Form & Validation** | React Hook Form, Zod                          |
+| **Backend**           | Next.js API Routes, Prisma ORM, NextAuth.js   |
+| **Database**          | AWS RDS (MySQL)                               |
+| **AI**                | Google GenAI — Gemini 3.1 Flash-Lite          |
+| **DevOps**            | AWS EC2, Cloudflare (DNS/HTTPS), Nginx, PM2   |
+| **Quality & CI**      | GitHub Actions, Vitest, CodeRabbit            |
 
-- **Core:** Next.js 16 (App Router), React 19, TypeScript
-- **Styling & UI:** Tailwind CSS v4, shadcn/ui
-- **State & Data Handling:** Zustand, TanStack Query (React Query)
-- **Form & Validation:** React Hook Form, Zod
+### 주요 기술 선택 이유
 
-### **Backend & Database**
+- **Next.js 16 App Router** — Server Component로 초기 로딩 최적화, 동일 프로젝트 안에서 API Routes로 풀스택 구성이 가능해 단독 배포 단위가 늘어나지 않음.
+- **Zustand** — 다중 타이머·조리 단계 상태처럼 컴포넌트 트리를 가로지르는 상태가 많지만, Redux 수준의 보일러플레이트가 불필요해 선택.
+- **TanStack Query** — 서버 상태와 클라이언트 상태를 분리해 캐싱·낙관적 업데이트를 선언적으로 처리.
+- **Gemini 3.1 Flash-Lite** — Structured Output(JSON Schema)을 안정적으로 지원하면서 응답 속도와 비용 균형이 가장 적합.
 
-- **API & Crawling:** Next.js API Routes, Cheerio
-- **Database & ORM:** AWS RDS (MySQL), Prisma ORM
-- **Auth & Docs:** NextAuth.js, Swagger (next-swagger-doc)
+---
 
-### **DevOps & Infrastructure**
+## 🏗 시스템 아키텍처
 
-- **Hosting & Security:** AWS EC2, Cloudflare (DNS/HTTPS)
-- **Server Operation:** Nginx, PM2
-- **CI/CD:** GitHub Actions
+<img width="1708" height="749" alt="accio-recipe_시스템아키텍처" src="https://github.com/user-attachments/assets/c450c2c4-af00-4873-bbec-e48a4e3604bf" />
 
-### **AI Pipeline**
+### 핵심 흐름
 
-- **LLM:** Google GenAI (Gemini API), AI Studio
+- Cloudflare와 Nginx를 거쳐 EC2 환경에서 운영되는 Next.js 기반 풀스택 웹 애플리케이션의 시스템 아키텍처
+- Next.js App Router 중심의 프론트엔드 구조(TailwindCSS, Shadcn UI, Zod, React Hook Form, Zustand, React Query)
+- NextAuth·Prisma 기반 서버 로직
+- AWS RDS(MySQL) 데이터 계층
+- LLM API 연동
+- GitHub Actions 기반 CI/CD 파이프라인
 
 ---
 
@@ -113,8 +173,38 @@ ACCIO-RECIPE/
 
 ---
 
+## 🤝 개발 환경 및 협업
+
+| 항목                  | 내용                                                        |
+| :-------------------- | :---------------------------------------------------------- |
+| **Branch 전략**       | Git Flow (main / develop / feature/\*)                      |
+| **Commit Convention** | Conventional Commits (`feat`, `fix`, `refactor`, `docs` 등) |
+| **PR Template**       | 변경 사항 / 의도 / 테스트 방법 / 스크린샷 섹션 강제         |
+| **Code Review**       | CodeRabbit AI 자동 리뷰 + 셀프 리뷰 체크리스트              |
+| **CI**                | GitHub Actions — `lint` → `type-check` → `test` 순차 실행   |
+| **테스트 전략**       | Vitest로 유틸/스키마 단위 테스트 + 시나리오 기반 수동 QA    |
+
+### CI 파이프라인 상세
+
+```yaml
+# .github/workflows/ci.yml (요약)
+on: [pull_request]
+jobs:
+  quality:
+    steps:
+      - ESLint
+      - tsc --noEmit
+      - vitest run
+```
+
+PR이 올라오면 위 작업이 자동 실행되어, 실패 시 머지가 차단되도록 구성.
+
+---
+
 ## 🚀 사용 예시
 
 1. **레시피 링크 입력:** 홈 화면에서 내가 요리하고 싶은 YouTube 영상이나 블로그의 URL을 입력창에 붙여넣고 분석 버튼을 누릅니다.
 2. **요리 모드 실행:** AI가 분석하여 깔끔하게 정리해준 레시피(재료 목록 및 조리법)를 확인하고, **[요리 시작]** 버튼을 눌러 조리 몰입형 화면으로 진입합니다.
 3. **나만의 기록 남기기:** 요리를 마친 후, 결과물 사진과 함께 이번 요리에서 아쉬웠던 점이나 가족의 반응 등을 간략히 메모해 저장합니다.
+
+---
