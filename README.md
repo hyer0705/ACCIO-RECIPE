@@ -15,7 +15,7 @@
 
 ## 🎬 데모
 
-[![Accio Recipe Demo](https://img.youtube.com/vi/P2oGN_nVM5A/maxresdefault.jpg)](https://youtube.com/watch?v=VIDEO_ID)
+[![Accio Recipe Demo](https://img.youtube.com/vi/P2oGN_nVM5A/maxresdefault.jpg)](https://youtu.be/P2oGN_nVM5A?si=2QbRyvmxx1d_yh6_)
 
 > 위 이미지를 클릭하면 YouTube 데모 영상으로 이동합니다.
 
